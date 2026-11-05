@@ -295,6 +295,30 @@ Checked by execution here:
   designed: this repo has no configured Lean project.
 Eleven test targets pass.
 
+## Cold Boot — the process, first implementation (2026-11-04)
+
+The owner's Cold Boot idea (drafted 2026-11-03, never approved
+until his go-ahead tonight) is now a working process in this
+repo, new files only: `COLD-BOOT.md` at the root and the
+executable pass `cold-boot.sh` (also `make cold-boot`).
+Decisions taken at his "create it" and recorded here: the front
+door is a standalone `COLD-BOOT.md`; the first repo is this one;
+the seal is the minimal v0.1 form — SHA-256 over the canonical
+field block in the file (owners, license file + SPDX + SHA-256,
+baseline commit, architecture, entry points, suite list).
+
+Verified by execution:
+- Full pass on the sealed tree: **18 gates PASS** — seal,
+  license hash, license SPDX, baseline ancestry, stack identity,
+  build, all eleven suites, traceback byte-equality, and the
+  skull decode round trip.
+- Negative test in a scratch clone: a one-character change to a
+  sealed field makes the seal gate FAIL and the pass exit
+  nonzero. The seal bites.
+The pass prints PROVEN (executed in the run) separately from
+DECLARED (the sealed fields) and grants nothing: no commercial
+authorization, no push, no publish, no license change.
+
 ## The remaining "what comes next" list (owner's order)
 
 1. ~~A genuine typed compiler IR~~ — done above (v0.2 core).

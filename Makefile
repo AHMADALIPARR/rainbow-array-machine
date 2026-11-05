@@ -75,3 +75,7 @@ traceback-test:
 traceback-proof: traceback-test
 	@command -v lake >/dev/null || { echo 'FAIL: lake/mathlib unavailable'; exit 1; }
 	lake env lean proofs/Symbolic.lean
+
+.PHONY: cold-boot
+cold-boot:
+	./cold-boot.sh
