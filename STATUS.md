@@ -417,3 +417,56 @@ unchanged this stage.
   cd1b29dd1d6f19063b52d9174b3f0674f6364e1436467e3147f1404740a1ed70;
   the retired traceback artifact gate is replaced by a core
   theorem-file integrity gate. Full pass at reseal: 16/16 gates.
+
+## V3 drops — verification record (owner-supplied, verbatim in crypto/)
+
+- astra-vault-unlambda.unl (28 definitions). Audit by parsing,
+  reference scan, textual-structure checks, and SKI execution
+  (normal-order evaluator; cross-checked against hand derivation
+  after a first evaluator bug was caught and corrected):
+  * 7 definitions are complete Unlambda terms (0, 1, 2, 3, sign,
+    odd, recip); the other 21 are open fragments, each short a
+    measured number of atoms (succ 1, add 1, mul 2, pred 1,
+    madhava_sum 3, egcd 7, dayan 5, ...). The notation completes
+    fragments textually at their use sites; no standard Unlambda
+    interpreter runs the file as shipped. Conversion to standard
+    form = making each fragment's arity explicit.
+  * `mod` is referenced by egcd and div and never defined; the
+    Dayan core cannot close until it exists.
+  * Textual iteration verified: 2 = succ+1 and 3 = succ+2 as
+    literal strings; recip = succ+0 as a literal string.
+  * `odd` is textually identical to `3` — as shipped it is the
+    numeral 3, not the function 2k+1.
+  * Numerals execute with exact iteration counts: n X Y reduces
+    with X applied exactly n times (0 -> i; 1 -> Y(XY);
+    2 -> X(Y(XY)); 3 -> X(X(Y(XY)))). A variant encoding —
+    inside-out nesting vs textbook Church — internally
+    consistent; the count property arithmetic depends on holds.
+- astra_math_vault.m (MATLAB). Runs end to end under Octave with
+  two tooling accommodations, his file untouched: a run copy
+  drops one stray `end` (line 24, after the display_summary
+  call — a syntax error under Octave, and unmatched in MATLAB);
+  Octave lacks histcounts, so a MATLAB-semantics shim was
+  supplied as tooling. Octave's rng stream differs from
+  MATLAB's, so exact digits are Octave-run values. Output:
+  entropy 0.00163191 bits, mean deviation 0.79764465,
+  RMS 0.99999950, max 4.88961352, outliers 0.00277100,
+  entropy delta 4.41505896, STATUS: EXCEEDED.
+  Internally consistent where the construction defines the
+  quantity (RMS ~1 for the z-scored sample, mean|z| ~ sqrt(2/pi),
+  outlier fraction ~ 0.0027, virtual memory 4.000 TB).
+  Two semantic findings, fixes offered not installed:
+  (1) the entropy pool includes each layer's hash field — one
+  sum-of-squares value in the thousands stretches the 256-bin
+  range until nearly all values land in a single bin; the
+  reported 0.00163 bits measures that artifact, not the layers'
+  distribution. (2) entropy_delta compares a discrete histogram
+  entropy against a differential Gaussian entropy; the
+  difference is 4.415 ~ -log2(bin width 12/256) for any input,
+  so the 0.05 threshold verdict reads EXCEEDED unconditionally.
+- seal_recursion.hc (HolyC-style). Executed via a faithful C11
+  port (logic unchanged): 208 rows, 2070 -> 0 in 207 steps of
+  10, row 0 renders 100000010110 in skull/crown, inversion carry
+  detected at row 1, col 7 (bit 4), 2070 -> 2060. The printed
+  "borrow propagated through 7 bit positions" reports the
+  column index from the left edge.
