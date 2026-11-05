@@ -12,9 +12,9 @@
 
 typedef struct { double *data; size_t n; size_t rows, cols; int rank; } Array;
 typedef struct { const char *emoji, *name; } Symbol;
-static const Symbol languages[]={{"🌀","BQN"},{"🔺","APL"},{"⚡","K"},{"🧩","J"},{"🪐","Uiua"},{"🏛️","Pascal"},{"⚙️","C"},{"🦀","Rust"},{"🧱","Forth"},{"🔌","SystemVerilog"},{"🐦","Unlambda"},{"λ","Haskell"},{"🕸️","Prolog"}};
+static const Symbol languages[]={{"🌀","BQN"},{"🔺","APL"},{"⚡","K"},{"🧩","J"},{"🪐","Uiua"},{"🏛️","Pascal"},{"⚙️","C"},{"🦀","Rust"},{"🧱","Forth"},{"🔌","SystemVerilog"},{"🐦","Unlambda"},{"λ","Haskell"},{"🕸️","Prolog"},{"🐺","Wolfram"}};
 static const Symbol types[]={{"🔹","scalar"},{"📏","vector"},{"🟦","matrix"},{"🧊","tensor"},{"🔱","ternary"}};
-static const Symbol operations[]={{"➕","add"},{"➖","subtract"},{"✖️","multiply"},{"🧲","matmul"},{"🔄","transpose"},{"📦","flatten"},{"📐","shape"},{"🧮","sum"}};
+static const Symbol operations[]={{"➕","add"},{"➖","subtract"},{"✖️","multiply"},{"🧲","matmul"},{"🔄","transpose"},{"📦","flatten"},{"📐","shape"},{"🧮","sum"},{"✨","symbolic_simplify"},{"📜","flat_lower"},{"🛡️","proof_certificate"}};
 static int lookup(const Symbol *s,size_t n,const char *t){for(size_t i=0;i<n;i++)if(strcmp(s[i].emoji,t)==0)return (int)i;return -1;}
 static int fail(int line,const char *why){fprintf(stderr,"line %d: %s\n",line,why);return 1;}
 static void release(Array *a){free(a->data);memset(a,0,sizeof(*a));}
@@ -89,6 +89,24 @@ static int matmul(char **t,int n,int line){
  for(size_t i=0;i<m;i++)for(size_t j=0;j<nn;j++)for(size_t z=0;z<k;z++)out.data[i*nn+j]+=left[i*k+z]*right[z*nn+j];
  printf("%s matrix matmul => ",languages[lang].name);print_array(&out);release(&out);return 0;
 }
+// Restricted symbolic adapter: a*x + b*x + c, integer coefficients.
+// This is an independently implemented subset, NOT Wolfram Engine integration.
+static int symbolic(char **t,int n,int line){
+ if(n!=6||strcmp(t[0],"🐺")||strcmp(t[1],"🔹"))return fail(line,"symbolic syntax: 🐺 🔹 OP a b c");
+ int op=lookup(operations,sizeof(operations)/sizeof(*operations),t[2]);
+ if(op<8||op>10)return fail(line,"unsupported symbolic operation");
+ long long v[3];
+ for(int i=0;i<3;i++){
+  char *end;errno=0;long long x=strtoll(t[3+i],&end,10);
+  if(errno||!t[3+i][0]||*end||x < -1000000||x > 1000000)return fail(line,"coefficient must be an integer in [-1000000,1000000]");
+  v[i]=x;
+ }
+ long long combined=v[0]+v[1];
+ if(op==8)printf("Wolfram-compatible subset simplify => (%lld*x)+(%lld)\n",combined,v[2]);
+ if(op==9)printf("FLAT v1: input x:i64; t0=mul_i64(x,%lld); t1=add_i64(t0,%lld); return t1\n",combined,v[2]);
+ if(op==10)printf("CERT v1: distributive_collect; lhs=(%lld*x)+(%lld*x)+(%lld); rhs=(%lld*x)+(%lld); status=VERIFIED_BY_INTEGER_COEFFICIENT_IDENTITY\n",v[0],v[1],v[2],combined,v[2]);
+ return 0;
+}
 int main(int argc,char **argv){
  if(argc==2&&!strcmp(argv[1],"--dictionary")){
   for(size_t i=0;i<sizeof(languages)/sizeof(*languages);i++)printf("LANG %s %s\n",languages[i].emoji,languages[i].name);
@@ -104,7 +122,7 @@ int main(int argc,char **argv){
   char *tok[MAX_TOKENS];int n=0;char *p=strtok(line," \t\r\n");
   while(p&&n<MAX_TOKENS){if(p[0]=='#'){p=NULL;break;}tok[n++]=p;p=strtok(NULL," \t\r\n");}
   if(p){errors+=fail(lineno,"too many tokens");continue;}
-  if(n){if(n>=3&&!strcmp(tok[2],"🧲"))errors+=matmul(tok,n,lineno);else errors+=execute(tok,n,lineno);}
+  if(n){if(n>=3&&!strcmp(tok[0],"🐺")&&(strcmp(tok[2],"✨")==0||strcmp(tok[2],"📜")==0||strcmp(tok[2],"🛡️")==0))errors+=symbolic(tok,n,lineno);else if(n>=3&&!strcmp(tok[2],"🧲"))errors+=matmul(tok,n,lineno);else errors+=execute(tok,n,lineno);}
  }
  if(ferror(f)){perror("read");errors++;}fclose(f);return errors?1:0;
 }

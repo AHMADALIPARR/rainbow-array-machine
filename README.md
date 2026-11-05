@@ -42,7 +42,7 @@ Dimensions: scalar = none, vector = `N`, matrix = `ROWS COLS`. Values are row-ma
 
 `🌀 BQN`, `🔺 APL`, `⚡ K`, `🧩 J`, `🪐 Uiua`, `🏛️ Pascal`, `⚙️ C`, `🦀 Rust`, `🧱 Forth`, `🔌 SystemVerilog`, `🐦 Unlambda`, `λ Haskell`, `🕸️ Prolog`.
 
-Only 🌀/🔺/⚡ execute in v0.1. Other namespaces are registered but fail closed.
+🌀/🔺/⚡ execute the original array subset. 🐺 Wolfram executes a **restricted, independently implemented symbolic polynomial subset**. Other namespaces fail closed.
 
 ### Registered types
 
@@ -74,3 +74,17 @@ Only 🌀/🔺/⚡ execute in v0.1. Other namespaces are registered but fail clo
 - v0.6: flat decoder reference, reproducible numeric tests, and native C backend.
 
 The cassette artwork is a proposed project identity, not embedded in this source distribution.
+
+## v0.2 Wolfram-inspired symbolic adapter and FLAT lowering
+
+`🐺` is the Wolfram namespace. This build does **not** bundle, call, or claim to implement Wolfram Engine, Mathematica, WSTP, or LibraryLink. No license or proprietary dependency is required. It implements a deliberately small compatible mathematical pattern: `a*x + b*x + c` with bounded signed integer coefficients.
+
+```text
+🐺 🔹 ✨ 2 3 7    # collect coefficients: (5*x)+7
+🐺 🔹 📜 2 3 7    # emit typed FLAT v1 SSA-like textual IR
+🐺 🔹 🛡️ 2 3 7    # verify coefficient identity algebraically
+```
+
+`✨` is symbolic simplification by collecting like terms, `📜` emits a flat scalar IR, and `🛡️` emits a narrowly scoped algebraic certificate. The certificate establishes the polynomial identity over mathematical integers; it is **not** a formal proof of overflow-free i64 execution. No arbitrary Wolfram expressions, tensors, integration, or actual Wolfram library integration are supported.
+
+A future optional WSTP adapter could use a separately installed, appropriately licensed Wolfram Engine and compare outputs with this independent reference implementation. That adapter is not part of this release.
