@@ -109,3 +109,31 @@ separated by ASCII whitespace; no reliance on grapheme-length or emoji bytes.
 For the vector example, output values are stored as little-endian f64 at
 byte offsets 0, 8, and 16. There is no dynamic allocation in the generated
 module. The original interpreter remains available as `./ram`.
+
+## v0.4: Geometry FLAT IR and KCL-inspired bridge
+
+The experimental geometry compiler is `src/ram_geometry.py`. It consumes UTF-8
+`.ram` plaintext and emits `.wat` and `.flat.json` sidecar metadata. This is
+RAM-specific syntax, **not** native BQN or KCL source. `⚡ @@` is a proposed
+bridge notation; it does not assert that `@@` is a native KCL operator.
+
+```text
+🌀 📐 GRID lattice 2 2 1 1
+>>>>>>>€ SHAPE 2 2 1
+⚡ @@ lattice ROTATE_Z 90
+>>>>>>>€ POINT 1 0 1 0
+↶ ⚡ @@ lattice ROTATE_Z 90
+>>>>>>>€ POINT 1 1 0 0
+```
+
+The supported subset is integer grid generation, 90-degree Z-axis rotations,
+integer translations, their exact inverses, shape and indexed-point assertions.
+The generated WAT exports linear memory initialized with packed little-endian
+`i32` XYZ coordinates, plus `run` returning the byte length. Coordinates are
+precomputed by the compiler; **this is not yet a runtime transform kernel**.
+The sidecar records shape, byte offsets, point count and dtype. Assertions are
+checked at compile time against the finite sample, not universally proven.
+
+Run `make geometry-test` or
+`python3 src/ram_geometry.py examples/geometry/grid.ram -o examples/geometry/grid.wat`.
+The WAT is not assembled into `.wasm` without an external WAT assembler.

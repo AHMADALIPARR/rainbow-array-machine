@@ -1,308 +1,260 @@
-// ramc — the Rainbow Array Machine compiler front end (v0.2 core).
+// ramc — the Rainbow Array Machine compiler front end:
+// source -> typed IR -> execution, with the reversible Unicode
+// instruction algebra and the geometry layer (owner's design):
 //
-// Pipeline: source lines -> typed IR -> execution of the IR.
-// v0.1's ram executes lines directly; ramc first lowers every line
-// into canonical typed IR nodes (SSA ids, explicit result types with
-// rank and shape, source line positions), type-checks operand and
-// reference shapes at IR-build time, and only then executes. Results
-// print in exactly the v0.1 format, so the two binaries can be
-// diffed line for line (tests/run-ir.sh does).
+//   >>>>>>>€ <expected>   assertion delimiter: the preceding
+//                         statement's value must equal the expected
+//                         literal in shape, kind, and values.
+//                         Geometry statements take field assertions
+//                         instead: SHAPE / ORIGIN / SPACING / DIM /
+//                         COORD [i j k] [x y z]; several distinct
+//                         fields may be asserted per statement.
+//   ↶ <statement>         apply the registered inverse of the
+//                         statement's operation. Exact inverses
+//                         (add, multiply, transpose, reverse) need
+//                         nothing more; the flatten and reshape
+//                         inverses need saved shape metadata — from
+//                         the typed IR's provenance (reference a
+//                         bound result) or supplied explicitly via
+//                         🗳️ — and compilation fails without it.
+//                         Reductions and picks discard information
+//                         and have no inverse: compilation fails.
+//   ⟲ <statement>         one-line round trip: run forward, apply
+//                         the inverse, require the original first
+//                         operand back.
+//   🛡️ ROUNDTRIP          certificate line: the immediately
+//                         preceding forward/inverse assertion pair
+//                         must form a verified round trip. Scope,
+//                         in the owner's words: a passing test
+//                         demonstrates the property for the tested
+//                         inputs; a universal proof would require
+//                         a separate formal verification step.
+//   ⚖️                     scalar compare, yields a verdict whose
+//                         printed form is 👑 (equal) or 💀 (not).
 //
-// Bindings: a line may open with `NAME <-` (the two tokens NAME and
-// the assignment arrow) to bind its result. A later operand may be
-// written `@NAME` in place of a literal operand; the operand's kind
-// and shape come from the bound node's type and are checked against
-// the line's declared type. This is the binding form the persistent
-// buffers of v0.4 build on.
+// Geometry layer: BQN (🌀) is the geometry namespace. A block
+//   🌀 📐 NAME / DIM / SHAPE / ORIGIN / SPACING
+// defines a first-class geometry value (coordinates, spacing,
+// topology), distinct from a bare array shape. The KCL bridge
+//   ⚡ @@ NAME / TRANSFORM ROTATE_Z 90
+// applies geometric transformations through our own @@ operator
+// (KCL's @ is annotation syntax; @@ is defined here, not assumed
+// to be native KCL). Rotations are quarter turns — multiples of
+// 90 degrees — so every coordinate stays exact. BQN axis
+// operations ⥊ reshape, ⍉ transpose, ↕ reverse, ⊑ pick, ⊏ select
+// are the executable geometry-flavored array operations.
 //
-// Namespaces and types that are registered but unimplemented
-// (including the reserved tensor and ternary types) fail closed at
-// the IR stage, exactly as v0.1 fails them at execution.
-//
-// Usage: ramc [--emit-ir] file.ram
+// Operands: dimension-headed literal lists (v0.1 grammar),
+// @references to bound results, and bracket literals — [1 2 3],
+// [[1 2] [3 4]] — which carry their own shape. ram.c is
+// untouched; ramc's computed output on v0.1 programs is
+// byte-identical to ram's.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #include <math.h>
 
-#define MAX_ITEMS 4096
-#define MAX_LINE 16384
-#define MAX_TOKENS 8192
-
-typedef struct { const char *emoji, *name; } Symbol;
-static const Symbol languages[]={{"🌀","BQN"},{"🔺","APL"},{"⚡","K"},{"🧩","J"},{"🪐","Uiua"},{"🏛️","Pascal"},{"⚙️","C"},{"🦀","Rust"},{"🧱","Forth"},{"🔌","SystemVerilog"},{"🐦","Unlambda"},{"λ","Haskell"},{"🕸️","Prolog"}};
-static const Symbol types[]={{"🔹","scalar"},{"📏","vector"},{"🟦","matrix"},{"🧊","tensor"},{"🔱","ternary"}};
-static const Symbol operations[]={{"➕","add"},{"➖","subtract"},{"✖️","multiply"},{"🧲","matmul"},{"🔄","transpose"},{"📦","flatten"},{"📐","shape"},{"🧮","sum"}};
-static int lookup(const Symbol *s,size_t n,const char *t){for(size_t i=0;i<n;i++)if(strcmp(s[i].emoji,t)==0)return (int)i;return -1;}
-
-typedef enum { K_SCALAR=0, K_VECTOR=1, K_MATRIX=2 } Kind;
-typedef struct { Kind kind; size_t d0, d1; } Type;   // vector: d0=n; matrix: d0=rows, d1=cols
-typedef enum { IR_CONST, IR_ADD, IR_SUB, IR_MUL, IR_MATMUL,
-               IR_TRANSPOSE, IR_FLATTEN, IR_SHAPE, IR_SUM, IR_BIND } IrOp;
-static const char *ir_names[]={"const","add","subtract","multiply","matmul",
-                               "transpose","flatten","shape","sum","bind"};
-
+#define MAXN 512
+#define MAXV 4096
+enum { K_SCALAR=0, K_VECTOR=1, K_MATRIX=2, K_VERDICT=3, K_GEOM=4 };
+typedef struct { int kind, rank, dims[3]; } Type;
 typedef struct {
-    IrOp op; Type type; int lang; int line; int decl;
-    int lhs, rhs;              // operand node ids (-1 = none)
-    double *data; size_t n;    // IR_CONST payload
-    char *name;                // IR_BIND name
+    int dim; double shape[3], origin[3], spacing[3];
+    double spacing_def[3], rot[9]; int ntf;
+} Geom;
+typedef struct { int is_ref, ref, self_shaped; Type type; double vals[MAXV]; int n; } Operand;
+typedef struct { int has, field; Type type; double vals[MAXV]; int n; double idx[3]; } Expected;
+// field: 0=value 1=shape 2=origin 3=spacing 4=coord 5=dim
+typedef struct {
+    int lang; char lang_name[16]; Type type; char op[28]; char decl[16];
+    Operand a, b; int has_a, has_b, line, inv, kind;  // kind: 0 normal, 1 roundtrip-cert, 2 roundtrip-line
+    Type pre_type;                                    // flatten/reshape: the input's type
+    Expected asserts[8]; int nasserts;
+    Geom geom; int geom_ref;                          // grid definition / bridge source
+    char tf_kind[8][16]; double tf_deg[8];            // bridge transform list
 } Node;
-
-static Node *nodes=NULL; static size_t nnodes=0, nodecap=0;
-static int add_node(Node nd){
-    if(nnodes==nodecap){ nodecap=nodecap?nodecap*2:64; nodes=realloc(nodes,nodecap*sizeof(Node)); if(!nodes){perror("realloc");exit(2);} }
-    nodes[nnodes]=nd; return (int)nnodes++;
+static Node nodes[MAXN]; static int nn=0;
+typedef struct { char name[64]; int node; } Binding;
+static Binding binds[MAXN]; static int nb=0;
+static Binding geoms_tab[MAXN]; static int ng=0;
+static const struct { const char *emoji, *name; } langs[]={
+    {"🌀","bqn"},{"🔺","apl"},{"⚡","k"},{"🧩","j"},{"🪐","uiua"},{"🏛️","pascal"},
+    {"⚙️","c"},{"🦀","rust"},{"🧱","forth"},{"🔌","systemverilog"},{"🐦","unlambda"},
+    {"λ","haskell"},{"🕸️","prolog"},{"🐺","wolfram"}};
+static const struct { const char *emoji, *name; int arity; } ops[]={
+    {"➕","add",2},{"➖","subtract",2},{"✖️","multiply",2},{"🧲","matmul",3},
+    {"🔄","transpose",1},{"📦","flatten",1},{"📐","shape",1},{"🧮","sum",1},
+    {"⚖️","compare",2},{"🗳️","reconstruct",3},
+    {"⥊","reshape",3},{"⍉","transpose",1},{"↕","reverse",1},{"⊑","pick",3},{"⊏","select",3}};
+static const char *type_names[]={"scalar","vector","matrix","verdict","geometry"};
+static void die(int line,const char *msg){ fprintf(stderr,"ramc: line %d: %s\n",line,msg); exit(1); }
+static int lookup(const char *tok,int which){
+    if(which==0){ for(size_t i=0;i<sizeof(langs)/sizeof(*langs);i++) if(!strcmp(tok,langs[i].emoji)) return (int)i; }
+    else { for(size_t i=0;i<sizeof(ops)/sizeof(*ops);i++) if(!strcmp(tok,ops[i].emoji)) return (int)i; }
+    return -1;
 }
-typedef struct { char *name; int id; } Binding;
-static Binding *binds=NULL; static size_t nbinds=0, bindcap=0;
-static int find_bind(const char *name){ for(size_t i=0;i<nbinds;i++) if(!strcmp(binds[i].name,name)) return binds[i].id; return -1; }
-static char *dupstr(const char *s){ size_t n=strlen(s)+1; char *p=malloc(n); if(!p){perror("malloc");exit(2);} memcpy(p,s,n); return p; }
+static int type_count(const Type *t){ int n=1; if(t->kind==K_VERDICT||t->kind==K_GEOM) return 1; for(int i=0;i<t->rank;i++) n*=t->dims[i]; return t->rank?n:1; }
+static int same_type(const Type *x,const Type *y){
+    if(x->kind!=y->kind||x->rank!=y->rank) return 0;
+    for(int i=0;i<x->rank;i++) if(x->dims[i]!=y->dims[i]) return 0; return 1;
+}
+static int find_bind(const char *name){ for(int i=0;i<nb;i++) if(!strcmp(binds[i].name,name)) return binds[i].node; return -1; }
+static int find_geom(const char *name){ for(int i=0;i<ng;i++) if(!strcmp(geoms_tab[i].name,name)) return geoms_tab[i].node; return -1; }
+static const char *bind_name_of(int node){ for(int i=0;i<nb;i++) if(binds[i].node==node) return binds[i].name; return "?"; }
+static const char *lang_disp(Node *nd){ return nd->lang_name[0]?nd->lang_name:langs[nd->lang].name; }
 
-static int cur_line=0;
-static int ir_fail(const char *why){ fprintf(stderr,"line %d: %s\n",cur_line,why); return -1; }
-
-static int parse_size(const char *s,size_t *out){char *end;errno=0;unsigned long long x=strtoull(s,&end,10);if(errno||!s[0]||*end||!x||x>MAX_ITEMS)return 0;*out=(size_t)x;return 1;}
-static int parse_num(const char *s,double *out){char *end;errno=0;double x=strtod(s,&end);if(errno||!s[0]||*end||!isfinite(x))return 0;*out=x;return 1;}
-static int is_name(const char *s){
-    if(!s[0])return 0;
-    for(size_t i=0;s[i];i++){ char c=s[i];
-        if(!(c=='_'||(c>='a'&&c<='z')||(c>='A'&&c<='Z')||(i&&c>='0'&&c<='9')))return 0; }
+// ---- bracket literals: recursive descent over a joined string ----
+typedef struct { const char *s; double vals[MAXV]; int n; } BParse;
+static void bp_ws(BParse *b){ while(*b->s==' '||*b->s=='\t') b->s++; }
+static int bp_level(BParse *b,Type *t){
+    bp_ws(b);
+    if(*b->s!='[') return 0;
+    b->s++; bp_ws(b);
+    if(*b->s=='['){
+        Type child; int count=0;
+        while(*b->s=='['){
+            Type ct; if(!bp_level(b,&ct)) return 0;
+            if(count&&!same_type(&ct,&child)) return 0;
+            child=ct; count++; bp_ws(b);
+        }
+        if(*b->s!=']') return 0;
+        b->s++;
+        if(child.rank>=2) return 0;
+        t->rank=child.rank+1; t->dims[0]=count;
+        for(int i=0;i<child.rank;i++) t->dims[i+1]=child.dims[i];
+        t->kind= t->rank==1?K_VECTOR:K_MATRIX;
+        return 1;
+    }
+    int count=0;
+    for(;;){
+        bp_ws(b);
+        if(*b->s==']'){ b->s++; break; }
+        char *end; double v=strtod(b->s,&end);
+        if(end==b->s||!isfinite(v)) return 0;
+        if(b->n>=MAXV) return 0;
+        b->vals[b->n++]=v; count++; b->s=end;
+    }
+    if(!count) return 0;
+    t->rank=1; t->dims[0]=count; t->kind=K_VECTOR;
     return 1;
 }
-static size_t type_count(Type t){ return t.kind==K_SCALAR?1:(t.kind==K_VECTOR?t.d0:t.d0*t.d1); }
-static int type_equal(Type a,Type b){ return a.kind==b.kind&&a.d0==b.d0&&a.d1==b.d1; }
-static void fmt_type(Type t,char *buf,size_t cap){
-    if(t.kind==K_SCALAR)snprintf(buf,cap,"scalar");
-    else if(t.kind==K_VECTOR)snprintf(buf,cap,"vector[%zu]",t.d0);
-    else snprintf(buf,cap,"matrix[%zu,%zu]",t.d0,t.d1);
-}
-
-// Parse one operand starting at token *pos. Declared kind/dims are
-// the line's, used for literals. Returns the operand's node id and
-// advances *pos, or -1 on error.
-static int parse_operand(char **t,int count,int *pos,Kind declared,Type header,int lang){
-    if(*pos>=count) { ir_fail("missing operand"); return -1; }
-    const char *tok=t[*pos];
-    if(tok[0]=='@'){
-        if(!is_name(tok+1)){ ir_fail("malformed reference"); return -1; }
-        int id=find_bind(tok+1);
-        if(id<0){ ir_fail("reference to unbound name"); return -1; }
-        (*pos)++;
-        return id;
+static int parse_bracket(char **tok,int ntok,int i,Operand *o,int line){
+    static char buf[16384]; buf[0]=0;
+    int depth=0, used=0;
+    for(int j=i;j<ntok;j++){
+        for(const char *c=tok[j];*c;c++){ if(*c=='[')depth++; else if(*c==']')depth--; }
+        strcat(buf,tok[j]); strcat(buf," "); used++;
+        if(depth==0) break;
     }
-    Type ty; ty.kind=declared; ty.d0=header.d0; ty.d1=header.d1;
-    size_t need=type_count(ty);
-    if((size_t)(count-*pos)<need){ ir_fail("operand has too few values"); return -1; }
-    Node nd; memset(&nd,0,sizeof nd); nd.op=IR_CONST; nd.type=ty; nd.lang=lang; nd.line=cur_line;
-    nd.lhs=nd.rhs=-1; nd.n=need; nd.data=malloc(need*sizeof(double));
-    if(!nd.data){perror("malloc");exit(2);}
-    for(size_t i=0;i<need;i++)
-        if(!parse_num(t[*pos+(int)i],&nd.data[i])){ free(nd.data); ir_fail("invalid numeric value"); return -1; }
-    *pos+=(int)need;
-    return add_node(nd);
+    if(depth!=0||used==0) die(line,"unterminated bracket literal");
+    BParse b={buf,{0},0};
+    if(!bp_level(&b,&o->type)) die(line,"malformed bracket literal (rank at most 2, rectangular, finite)");
+    bp_ws(&b); if(*b.s) die(line,"trailing characters after bracket literal");
+    o->n=b.n; memcpy(o->vals,b.vals,sizeof(double)*(size_t)b.n);
+    o->is_ref=0; o->ref=-1; o->self_shaped=1;
+    if(o->n!=type_count(&o->type)) die(line,"bracket literal element count does not match its shape");
+    return used;
 }
-
-// Lower one source line. Returns 0 on success, 1 on IR error.
-static int lower_line(char **t,int count){
-    size_t checkpoint=nnodes;
-    int base=0; const char *bindname=NULL;
-    if(count>=2 && is_name(t[0]) && !strcmp(t[1],"←")){ bindname=t[0]; base=2; }
-    if(count-base<3){ ir_fail("expected: [NAME <-] LANGUAGE TYPE OP operands..."); goto bad; }
-    int lang=lookup(languages,sizeof(languages)/sizeof(*languages),t[base]);
-    int type=lookup(types,sizeof(types)/sizeof(*types),t[base+1]);
-    int op=lookup(operations,sizeof(operations)/sizeof(*operations),t[base+2]);
-    if(lang<0){ ir_fail("unknown language namespace"); goto bad; }
-    if(type<0){ ir_fail("unknown array type"); goto bad; }
-    if(op<0){ ir_fail("unknown operation"); goto bad; }
-    if(lang>2){ ir_fail("namespace registered, execution semantics not implemented"); goto bad; }
-    if(type>2){ ir_fail("array type registered, execution semantics not implemented"); goto bad; }
-    Kind declared=(Kind)type;
-    int pos=base+3; Node nd; memset(&nd,0,sizeof nd); nd.lang=lang; nd.line=cur_line; nd.lhs=nd.rhs=-1; nd.decl=type;
-    int result=-1;
-    if(op<=2){                                    // elementwise binary
-        // The dimension header sizes literal operands. When the first
-        // operand is a reference it carries its own shape, and any
-        // literal after it is sized by the reference's type instead.
-        Type header; header.kind=declared; header.d0=1; header.d1=1;
-        int first_is_ref = pos<count && t[pos][0]=='@';
-        if(!first_is_ref){
-            if(declared==K_VECTOR){ if(pos>=count||!parse_size(t[pos],&header.d0)){ir_fail("missing vector length");goto bad;} pos++; }
-            if(declared==K_MATRIX){ if(pos+1>=count||!parse_size(t[pos],&header.d0)||!parse_size(t[pos+1],&header.d1)){ir_fail("missing matrix dimensions");goto bad;} pos+=2; }
-        }
-        int a=parse_operand(t,count,&pos,declared,header,lang); if(a<0)goto bad;
-        Type hb = first_is_ref? nodes[a].type : header;
-        int b=parse_operand(t,count,&pos,declared,hb,lang); if(b<0)goto bad;
-        if(!type_equal(nodes[a].type,nodes[b].type)){ ir_fail("elementwise operands must have identical type and shape"); goto bad; }
-        if(nodes[a].type.kind!=declared){ ir_fail("operand kind does not match the declared type"); goto bad; }
-        nd.op= op==0?IR_ADD: op==1?IR_SUB: IR_MUL; nd.type=nodes[a].type; nd.lhs=a; nd.rhs=b;
-        result=add_node(nd);
-    } else if(op==3){                             // matmul: header M K N
-        if(declared!=K_MATRIX){ ir_fail("matmul requires the matrix type"); goto bad; }
-        size_t m,k,nn;
-        if(pos+2>=count||!parse_size(t[pos],&m)||!parse_size(t[pos+1],&k)||!parse_size(t[pos+2],&nn)){ ir_fail("matmul expects M K N"); goto bad; }
-        pos+=3;
-        Type ha={K_MATRIX,m,k}, hb={K_MATRIX,k,nn};
-        int a=parse_operand(t,count,&pos,declared,ha,lang); if(a<0)goto bad;
-        int b=parse_operand(t,count,&pos,declared,hb,lang); if(b<0)goto bad;
-        if(!type_equal(nodes[a].type,ha)||!type_equal(nodes[b].type,hb)){ ir_fail("matmul operand shape does not match M K N"); goto bad; }
-        nd.op=IR_MATMUL; nd.type=(Type){K_MATRIX,m,nn}; nd.lhs=a; nd.rhs=b;
-        result=add_node(nd);
-    } else {                                      // unary ops 4..7
-        Type header; header.kind=declared; header.d0=1; header.d1=1;
-        int only_is_ref = pos<count && t[pos][0]=='@';
-        if(!only_is_ref){
-            if(declared==K_VECTOR){ if(pos>=count||!parse_size(t[pos],&header.d0)){ir_fail("missing vector length");goto bad;} pos++; }
-            if(declared==K_MATRIX){ if(pos+1>=count||!parse_size(t[pos],&header.d0)||!parse_size(t[pos+1],&header.d1)){ir_fail("missing matrix dimensions");goto bad;} pos+=2; }
-        }
-        int a=parse_operand(t,count,&pos,declared,header,lang); if(a<0)goto bad;
-        if(nodes[a].type.kind!=declared){ ir_fail("operand kind does not match the declared type"); goto bad; }
-        Type in=nodes[a].type;
-        nd.lhs=a;
-        if(op==4){ if(in.kind!=K_MATRIX){ir_fail("transpose requires a matrix");goto bad;}
-                   nd.op=IR_TRANSPOSE; nd.type=(Type){K_MATRIX,in.d1,in.d0}; }
-        else if(op==5){ nd.op=IR_FLATTEN; nd.type=(Type){K_VECTOR,type_count(in),1}; }
-        else if(op==6){ nd.op=IR_SHAPE; nd.type=(Type){K_VECTOR,in.kind==K_MATRIX?2:1,1}; }
-        else { nd.op=IR_SUM; nd.type=(Type){K_SCALAR,1,1}; }
-        result=add_node(nd);
-    }
-    if(pos!=count){ ir_fail("trailing tokens after instruction"); goto bad; }
-    if(bindname){
-        if(find_bind(bindname)>=0){ ir_fail("name is already bound"); goto bad; }
-        Node bd; memset(&bd,0,sizeof bd); bd.op=IR_BIND; bd.type=nodes[result].type;
-        bd.lang=lang; bd.line=cur_line; bd.lhs=result; bd.rhs=-1; bd.name=dupstr(bindname);
-        int bid=add_node(bd);
-        if(nbinds==bindcap){ bindcap=bindcap?bindcap*2:32; binds=realloc(binds,bindcap*sizeof(Binding)); if(!binds){perror("realloc");exit(2);} }
-        binds[nbinds].name=bd.name; binds[nbinds].id=bid; nbinds++;
-    }
-    return 0;
- bad:
-    for(size_t i=checkpoint;i<nnodes;i++){ free(nodes[i].data); free(nodes[i].name); }
-    nnodes=checkpoint;
-    return 1;
+static long parse_dim(const char *s,int line){
+    char *end; long v=strtol(s,&end,10);
+    if(*end||v<1||v>MAXV) die(line,"bad dimension");
+    return v;
 }
-
-static void emit_ir(void){
-    for(size_t i=0;i<nnodes;i++){
-        Node *nd=&nodes[i]; char tb[64]; fmt_type(nd->type,tb,sizeof tb);
-        printf("%%%zu = ",i);
-        if(nd->op==IR_CONST){
-            printf("const %s [",tb);
-            for(size_t j=0;j<nd->n;j++)printf("%s%.12g",j?", ":"",nd->data[j]);
-            printf("] @L%d\n",nd->line);
-        } else if(nd->op==IR_BIND){
-            printf("bind \"%s\" %%%d @L%d\n",nd->name,nd->lhs,nd->line);
-        } else {
-            for(const char *p=languages[nd->lang].name;*p;p++)putchar(*p>='A'&&*p<='Z'?*p-'A'+'a':*p);
-            putchar('.');
-            fputs(ir_names[nd->op],stdout);
-            printf(" %%%d",nd->lhs);
-            if(nd->rhs>=0)printf(", %%%d",nd->rhs);
-            printf(" : %s @L%d\n",tb,nd->line);
+static double parse_val(const char *s,int line){
+    char *end; double v=strtod(s,&end);
+    if(*end||!isfinite(v)) die(line,"bad numeric value");
+    return v;
+}
+// Parse one operand beginning at token i. hdr_dims: -1 = shape from
+// the operand itself (reference or bracket); >=0 = literal header
+// with that many dimension tokens. Returns tokens consumed.
+static int parse_operand(char **tok,int ntok,int i,int hdr_dims,Operand *o,int line){
+    if(i>=ntok) die(line,"missing operand");
+    memset(o,0,sizeof *o);
+    if(tok[i][0]=='@'){
+        int src=find_bind(tok[i]+1);
+        if(src<0) die(line,"unbound reference");
+        o->is_ref=1; o->ref=src; o->self_shaped=1; o->type=nodes[src].type; o->n=type_count(&o->type);
+        return 1;
+    }
+    if(tok[i][0]=='[') return parse_bracket(tok,ntok,i,o,line);
+    if(hdr_dims<0) die(line,"operand needs a shape (reference, bracket, or header)");
+    long d[2]={1,1};
+    for(int k=0;k<hdr_dims;k++){
+        if(i+k>=ntok) die(line,"missing dimension");
+        d[k]=parse_dim(tok[i+k],line);
+    }
+    int count= hdr_dims==0?1:(int)(hdr_dims==1?d[0]:d[0]*d[1]);
+    if(count>MAXV) die(line,"operand exceeds 4096 elements");
+    if(i+hdr_dims+count>ntok) die(line,"not enough values for operand");
+    for(int k=0;k<count;k++) o->vals[k]=parse_val(tok[i+hdr_dims+k],line);
+    o->n=count;
+    o->type.kind= hdr_dims==0?K_SCALAR:hdr_dims==1?K_VECTOR:K_MATRIX;
+    o->type.rank=hdr_dims;
+    o->type.dims[0]=(int)d[0]; o->type.dims[1]=(int)d[1];
+    return hdr_dims+count;
+}
+static void add_assert(Node *nd,Expected *e,int line){
+    for(int k=0;k<nd->nasserts;k++)
+        if(nd->asserts[k].field==e->field) die(line,"duplicate assertion (same field) for one statement");
+    if(nd->nasserts>=8) die(line,"too many assertions for one statement");
+    nd->asserts[nd->nasserts++]=*e;
+}
+static void parse_expected(char **tok,int ntok,int i,Expected *e,int line){
+    if(i>=ntok) die(line,"assertion without an expected value");
+    memset(e,0,sizeof *e); e->has=1; e->field=0;
+    static const struct { const char *word; int field; } fields[]={
+        {"SHAPE",1},{"ORIGIN",2},{"SPACING",3},{"COORD",4},{"DIM",5}};
+    for(size_t k=0;k<sizeof(fields)/sizeof(*fields);k++){
+        if(!strcmp(tok[i],fields[k].word)){
+            e->field=fields[k].field;
+            if(e->field==5){
+                if(ntok!=i+2) die(line,"DIM assertion: >>>>>>>€ DIM n");
+                char *end; long v=strtol(tok[i+1],&end,10);
+                if(*end||v<1||v>3) die(line,"bad DIM value");
+                e->n=1; e->vals[0]=(double)v; return;
+            }
+            if(e->field==4){
+                Operand oi,ov;
+                int u1=parse_bracket(tok,ntok,i+1,&oi,line);
+                int u2=parse_bracket(tok,ntok,i+1+u1,&ov,line);
+                if(i+1+u1+u2!=ntok) die(line,"trailing tokens after COORD assertion");
+                if(oi.n<1||oi.n>3||ov.n!=oi.n) die(line,"COORD assertion: index and point must share a length 1..3");
+                for(int j=0;j<oi.n;j++) e->idx[j]=oi.vals[j];
+                e->n=ov.n; memcpy(e->vals,ov.vals,sizeof(double)*(size_t)ov.n);
+                return;
+            }
+            Operand o; int used=parse_bracket(tok,ntok,i+1,&o,line);
+            if(i+1+used!=ntok) die(line,"trailing tokens after field assertion");
+            e->n=o.n; memcpy(e->vals,o.vals,sizeof(double)*(size_t)o.n);
+            return;
         }
     }
+    if(!strcmp(tok[i],"👑")||!strcmp(tok[i],"💀")){
+        if(ntok!=i+1) die(line,"trailing tokens after verdict expectation");
+        e->type.kind=K_VERDICT; e->type.rank=0; e->n=1;
+        e->vals[0]= !strcmp(tok[i],"👑")?1.0:0.0;
+        return;
+    }
+    if(tok[i][0]!='[') die(line,"expected value must be a bracket literal, a verdict, or a geometry field");
+    Operand o; int used=parse_bracket(tok,ntok,i,&o,line);
+    if(i+used!=ntok) die(line,"trailing tokens after expected value");
+    e->type=o.type; e->n=o.n; memcpy(e->vals,o.vals,sizeof(double)*(size_t)o.n);
 }
-
-// ---- IR execution (mirrors the v0.1 numeric semantics) ----
-typedef struct { double *data; size_t n, rows, cols; int rank; } Array;
-static Array *vals=NULL;
-static int res(int id){ while(nodes[id].op==IR_BIND) id=nodes[id].lhs; return id; }
-static void run_ir(void){
-    vals=calloc(nnodes?nnodes:1,sizeof(Array));
-    if(!vals){perror("calloc");exit(2);}
-    for(size_t i=0;i<nnodes;i++){
-        Node *nd=&nodes[i]; Array *out=&vals[i];
-        if(nd->op==IR_CONST){
-            out->n=nd->n; out->data=malloc(nd->n*sizeof(double));
-            if(!out->data){perror("malloc");exit(2);}
-            memcpy(out->data,nd->data,nd->n*sizeof(double));
-            out->rank= nd->type.kind==K_SCALAR?0: nd->type.kind==K_VECTOR?1:2;
-            out->rows= nd->type.kind==K_MATRIX?nd->type.d0:1;
-            out->cols= nd->type.kind==K_MATRIX?nd->type.d1:nd->type.d0;
-            continue;
-        }
-        if(nd->op==IR_BIND) continue;   // alias only; res() resolves through it
-        Array *a=&vals[res(nd->lhs)];
-        size_t n=type_count(nd->type);
-        out->n=n; out->data=calloc(n,sizeof(double)); if(!out->data){perror("calloc");exit(2);}
-        out->rank= nd->type.kind==K_SCALAR?0: nd->type.kind==K_VECTOR?1:2;
-        out->rows= nd->type.kind==K_MATRIX?nd->type.d0:1;
-        out->cols= nd->type.kind==K_MATRIX?nd->type.d1:nd->type.d0;
-        switch(nd->op){
-            case IR_ADD: {
-                Array *b=&vals[res(nd->rhs)];
-                for(size_t j=0;j<n;j++) out->data[j]=a->data[j]+b->data[j];
-                break; }
-            case IR_SUB: {
-                Array *b=&vals[res(nd->rhs)];
-                for(size_t j=0;j<n;j++) out->data[j]=a->data[j]-b->data[j];
-                break; }
-            case IR_MUL: {
-                Array *b=&vals[res(nd->rhs)];
-                for(size_t j=0;j<n;j++) out->data[j]=a->data[j]*b->data[j];
-                break; }
-            case IR_MATMUL: {
-                Array *b=&vals[res(nd->rhs)];
-                size_t m=nd->type.d0, k=nodes[res(nd->lhs)].type.d1, nn=nd->type.d1;
-                for(size_t r=0;r<m;r++)
-                    for(size_t c=0;c<nn;c++){
-                        double s=0;
-                        for(size_t z=0;z<k;z++) s+=a->data[r*k+z]*b->data[z*nn+c];
-                        out->data[r*nn+c]=s;
-                    }
-                break; }
-            case IR_TRANSPOSE: {
-                size_t r0=nodes[nd->lhs].type.d0, c0=nodes[nd->lhs].type.d1;
-                for(size_t r=0;r<r0;r++)
-                    for(size_t c=0;c<c0;c++) out->data[c*r0+r]=a->data[r*c0+c];
-                break; }
-            case IR_FLATTEN:
-                memcpy(out->data,a->data,a->n*sizeof(double));
-                break;
-            case IR_SHAPE: {
-                Type it=nodes[nd->lhs].type;
-                out->data[0]=(double)(it.kind==K_MATRIX?it.d0: it.kind==K_VECTOR?it.d0:1);
-                if(it.kind==K_MATRIX) out->data[1]=(double)it.d1;
-                break; }
-            case IR_SUM: {
-                double s=0;
-                for(size_t j=0;j<a->n;j++) s+=a->data[j];
-                out->data[0]=s;
-                break; }
-            default: break;
-        }
-        const char *kname= nd->decl==K_SCALAR?"scalar": nd->decl==K_VECTOR?"vector":"matrix";
-        const char *oname= nd->op==IR_ADD?"add": nd->op==IR_SUB?"subtract": nd->op==IR_MUL?"multiply":
-                           nd->op==IR_MATMUL?"matmul": nd->op==IR_TRANSPOSE?"transpose":
-                           nd->op==IR_FLATTEN?"flatten": nd->op==IR_SHAPE?"shape":"sum";
-        printf("%s %s %s => rank=%d shape=",languages[nd->lang].name,kname,oname,out->rank);
-        if(out->rank==0)printf("[]"); else if(out->rank==1)printf("[%zu]",out->n); else printf("[%zu,%zu]",out->rows,out->cols);
-        printf(" values=[");
-        for(size_t j=0;j<out->n;j++)printf("%s%.12g",j?",":"",out->data[j]);
-        puts("]");
-    }
+static int chase(int idx){ while(!strcmp(nodes[idx].op,"bind")) idx=nodes[idx].a.ref; return idx; }
+static int inverse_registered(const char *oname){
+    return !strcmp(oname,"add")||!strcmp(oname,"multiply")||!strcmp(oname,"transpose")
+        ||!strcmp(oname,"flatten")||!strcmp(oname,"reshape")||!strcmp(oname,"reverse");
 }
-
-int main(int argc,char **argv){
-    int emit=0; const char *file=NULL;
-    for(int i=1;i<argc;i++){
-        if(!strcmp(argv[i],"--emit-ir"))emit=1;
-        else if(!file)file=argv[i];
-        else { fprintf(stderr,"usage: ramc [--emit-ir] file.ram\n"); return 2; }
-    }
-    if(!file){ fprintf(stderr,"usage: ramc [--emit-ir] file.ram\n"); return 2; }
-    FILE *f=fopen(file,"r"); if(!f){perror(file);return 2;}
-    char line[MAX_LINE]; int errors=0;
-    while(fgets(line,sizeof(line),f)){
-        cur_line++;
-        if(!strchr(line,'\n')&&!feof(f)){ fprintf(stderr,"line %d: line too long\n",cur_line); errors++; int c; while((c=fgetc(f))!='\n'&&c!=EOF); continue; }
-        char *tok[MAX_TOKENS]; int n=0; char *p=strtok(line," \t\r\n");
-        while(p&&n<MAX_TOKENS){ if(p[0]=='#'){p=NULL;break;} tok[n++]=p; p=strtok(NULL," \t\r\n"); }
-        if(p){ fprintf(stderr,"line %d: too many tokens\n",cur_line); errors++; continue; }
-        if(n) errors+=lower_line(tok,n);
-    }
-    if(ferror(f)){perror("read");errors++;} fclose(f);
-    if(emit) emit_ir(); else if(!errors) run_ir();
-    return errors?1:0;
+static void validate_grid(Node *nd,int line){
+    Geom *g=&nd->geom;
+    if(g->dim<1||g->dim>3) die(line,"GRID block needs DIM 1..3");
+    int sc= nd->has_b? nd->b.n : 0;   // shape bracket parked in operand b during the block
+    if(!sc) die(line,"GRID block needs a SHAPE");
+    if(sc!=g->dim) die(line,"SHAPE length must equal DIM");
+    for(int k=0;k<g->dim;k++) g->shape[k]=nd->b.vals[k];
+    if(nd->has_a){ if(nd->a.n!=g->dim) die(line,"ORIGIN/SPACING length must equal DIM"); }
+    g->rot[0]=g->rot[4]=g->rot[8]=1.0;
+    for(int k=0;k<g->dim;k++) g->spacing_def[k]=g->spacing[k];
+    nd->has_a=nd->has_b=0;
 }

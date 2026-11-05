@@ -1,0 +1,12 @@
+# 2x2x1 integer coordinate grid, x-fastest
+🌀 📐 GRID lattice 2 2 1 1
+>>>>>>>€ SHAPE 2 2 1
+>>>>>>>€ POINT 1 1 0 0
+⚡ @@ lattice ROTATE_Z 90
+>>>>>>>€ POINT 1 0 1 0
+↶ ⚡ @@ lattice ROTATE_Z 90
+>>>>>>>€ POINT 1 1 0 0
+⚡ @@ lattice TRANSLATE 3 4 5
+>>>>>>>€ POINT 0 3 4 5
+↶ ⚡ @@ lattice TRANSLATE 3 4 5
+>>>>>>>€ POINT 0 0 0 0

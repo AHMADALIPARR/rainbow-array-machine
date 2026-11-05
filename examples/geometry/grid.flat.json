@@ -1,0 +1,17 @@
+{
+  "format": "ram-geometry-flat-v1",
+  "assertions_passed": 6,
+  "grids": {
+    "lattice": {
+      "shape": [
+        2,
+        2,
+        1
+      ],
+      "offset_bytes": 0,
+      "point_count": 4,
+      "dtype": "i32",
+      "components": 3
+    }
+  }
+}
