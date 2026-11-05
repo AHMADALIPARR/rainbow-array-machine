@@ -262,6 +262,39 @@ i64, and the two runtime compilers are not yet unified into a
 general typed-FLAT lowering pipeline. Unsupported operations
 are rejected. All ten test targets pass.
 
+## v0.7 — as received and checked (owner's zip, 2026-11-04)
+
+Committed verbatim (`1c61087`): the symbolic metaprogramming
+inversion layer — `src/ram_traceback.py`, a generative
+traceback. Given a source and a WASM artifact, it recompiles the
+source deterministically and requires byte equality with the
+artifact (fail closed: altered binaries and wrong sources are
+rejected, both covered by his tests), then *generates* a Lean
+proof obligation for the pair — the affine coefficient identity
+over ℤ, by `ring`; the pointwise array map over ℤ, by `rfl` —
+with a `.trace.json` evidence record (SHA-256 of source and
+artifact, manifest, obligations, scope). His scoping is exact
+and is preserved here: this is artifact/source consistency and
+an abstract algebraic obligation — NOT a proof that the WASM
+module implements the identity, not IEEE-754 or compiler
+correctness, and not independent reverse engineering.
+
+Checked by execution here:
+- His traceback suite passes (4 cases); regeneration of
+  `proofs/Symbolic.lean` and the trace record is
+  byte-deterministic; both recorded hashes match the artifacts.
+- **The generated proofs were actually run through Lean.** In
+  the workspace's Mathlib environment (scm-mathlib-test lake
+  project), `lake env lean` checks both obligation kinds: the
+  affine identity and the generated vector pointwise obligation.
+  The shipped trace record keeps its generation-time status
+  (`lean_status: not_checked`) — that field describes the state
+  at generation on the author's side; the check recorded here is
+  a separate, later verification in a named environment. The
+  repo's own `traceback-proof` target still fails closed, as
+  designed: this repo has no configured Lean project.
+Eleven test targets pass.
+
 ## The remaining "what comes next" list (owner's order)
 
 1. ~~A genuine typed compiler IR~~ — done above (v0.2 core).
