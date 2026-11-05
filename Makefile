@@ -1,13 +1,29 @@
 CC ?= cc
 CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Werror -pedantic
-.PHONY: all test clean
-all: ram
+.PHONY: all test test-ir test-flat test-skull test-inv test-geom clean
+all: ram ramc flat skull
 ram: src/ram.c
 	$(CC) $(CFLAGS) -o $@ $< -lm
+ramc: src/ramc.c
+	$(CC) $(CFLAGS) -o $@ $< -lm
+flat: src/flat.c
+	$(CC) $(CFLAGS) -o $@ $<
+skull: src/skull.c
+	$(CC) $(CFLAGS) -o $@ $<
 test: ram
 	sh tests/run.sh
+test-ir: ram ramc
+	sh tests/run-ir.sh
+test-flat: ram ramc flat
+	sh tests/run-flat.sh
+test-skull: skull
+	sh tests/run-skull.sh
+test-inv: ramc
+	sh tests/run-inv.sh
+test-geom: ramc
+	sh tests/run-geom.sh
 clean:
-	rm -f ram
+	rm -f ram ramc flat skull
 
 .PHONY: wat-test
 wat-test:

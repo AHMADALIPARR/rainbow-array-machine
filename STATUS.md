@@ -127,6 +127,61 @@ so `.skull` has been exercised on every other artifact class and
 takes a `.wasm` unchanged the day the assembler lands — the
 encoder neither knows nor cares which bytes it is given.
 
+## v0.4 — as received (owner's zip, 2026-11-04)
+
+Committed verbatim (`121bef5`): the geometry compiler,
+`src/ram_geometry.py` — one-line GRID definition (name, nx ny nz,
+scalar spacing; integer lattice points, x-fastest), the @@ bridge
+with ROTATE_Z quarter turns and TRANSLATE plus their ↶ inverses,
+compile-time SHAPE and POINT assertions, and a Geometric FLAT IR
+sidecar (JSON manifest: shape, offsets, point count, i32 dtype)
+with a WAT memory image. His suite passes (5 unittest cases);
+regeneration reports "48 bytes of geometry; 6 assertions passed."
+Scope as he states it: RAM-specific syntax, not native BQN/KCL;
+@@ is a proposed bridge notation, not a native KCL operator;
+coordinates are precomputed by the compiler, not a runtime
+transform kernel; assertions are checked against the finite
+sample, not universally proven; WAT still unassembled.
+
+## Milestone — reversible algebra + geometry in the typed IR
+
+The owner's two design messages (assertion/inverse algebra;
+BQN geometry layer with the @@ bridge) implemented in `ramc`,
+with geometry semantics aligned to his v0.4 artifact where the
+earlier prose sketch differed (one-line GRID, scalar spacing,
+POINT index form, definition shape invariant under transforms —
+the points carry the geometry):
+
+- `>>>>>>>€` assertions on any statement: value literals in
+  bracket form, verdicts (👑/💀), geometry SHAPE and POINT fields;
+  several POINT assertions may attach to one statement.
+- `↶` registered inverses: add, multiply, transpose, reverse are
+  exact; flatten and reshape inverses require saved shape
+  metadata — IR provenance via a bound reference, or explicit
+  🗳️ reconstruct — and compilation fails without it; sum, pick,
+  select and shape have no inverse and compilation fails.
+- `⟲` one-line round trips and the `🛡️ ROUNDTRIP` certificate
+  (`CERT v1: roundtrip; op=...; status=VERIFIED_ON_TESTED_INPUTS`)
+  over a forward/inverse assertion pair.
+- ⚖️ scalar compare yielding a verdict value.
+- Bracket operands throughout the array grammar.
+- Geometry as a first-class IR type: GRID definition, @@ bridge
+  (ROTATE_Z / TRANSLATE, plus ↶ forms), BQN axis operations
+  ⥊ reshape, ⍉ transpose, ↕ reverse, ⊑ pick, ⊏ select.
+
+Cross-implementation verification (`make test-geom`): ramc runs
+the owner's `examples/geometry/grid.ram` and passes exactly the
+6 assertions his compiler reports; the final lattice points match
+the payload tuple his test suite pins. Also verified: the algebra
+demo (`examples/inverse.ram`, 11 assertions + certificate + 7
+negative cases) and full regression — `make test`,
+`make test-ir` (demo output still byte-identical to ram),
+`make test-flat`, `make test-skull`, `make wat-test`,
+`make geometry-test` all pass. `skull invert` (bitwise NOT on
+the encoded form) also landed with this milestone: the owner's
+0x65 vector, involution, and NOT semantics cross-checked over
+all byte values.
+
 ## The remaining "what comes next" list (owner's order)
 
 1. ~~A genuine typed compiler IR~~ — done above (v0.2 core).
