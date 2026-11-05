@@ -175,6 +175,38 @@ semantics and a simulation proof, and it is not claimed here. 🧾
 
 ---
 
+## 🔐 V3 — the ASTRA-VAULT layer (`crypto/`)
+
+Hand-rolled cryptography and the mathematics it seals with —
+owner-authored, carried verbatim, verified by execution;
+findings are recorded in STATUS.md, never silently patched.
+
+| Artifact | What it is | Verification status |
+|---|---|---|
+| `crypto/astra-vault-unlambda.unl` | 🌌 Madhava's π/sine series + Qin Jiushao's Dayan (CRT) closure in pure Unlambda combinators | Numerals execute with exact iteration counts (variant encoding); 21 of 28 definitions are open fragments completed textually at use sites; `mod` is referenced but undefined; `odd` is textually the numeral 3 — conversion to standard Unlambda is the open step |
+| `crypto/astra_math_vault.m` | 🧮 Recursive mathematical vault — layered bases, entropy statistics, deviation analysis, invariants, compression over a synthetic trillion-parameter field | Runs end to end (Octave record in STATUS); construction-consistent figures verified (RMS ≈ 1, mean \|z\| ≈ √(2/π)); two entropy-semantics findings recorded (hash-pooled bins; discrete-vs-differential delta) |
+| `crypto/seal_recursion.hc` | 🔏 The seal — 2070 descending by 10s to 0 as a 12-bit 💀👑 grid, with inversion-carry detection | Executes via the C11 port: 208 rows, carry at row 1 col 7 (bit 4), 2070 → 2060 |
+| `crypto/seal_recursion.c` | The C11 port of the seal — the form that enters the CompCert pipeline | Output identical to the verified reference run |
+
+---
+
+## ⚙️ CompCert lowering (`compcert/`)
+
+The host-side C — the seal, the four core pipeline tools, and
+the v0.1-line tools — lowers to assembly through **CompCert**,
+the verified C compiler whose Coq-checked theorem guarantees
+the assembly preserves the C semantics. `compcert/lower.sh`
+performs the lowering and the differential re-verification of
+the CompCert-built binaries against the reference suites.
+
+Scope: CompCert proves C → assembly preservation; it does not
+prove the C itself, and it has no wasm32 target — the
+per-program WASM modules stay clang-built, and CompCert lowers
+the host toolchain that produces them. Toolchain status and
+lowering results are recorded in STATUS.md.
+
+---
+
 ## 🛣️ Open frontier
 
 - FLAT2 carries validated metadata with the payload; it is not
