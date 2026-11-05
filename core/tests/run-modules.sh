@@ -13,6 +13,7 @@ const expected = {
   'build/geometry.wasm': [0,1,0,-1,0,0,4,4,5,3,5,5,1,0,0,1,0,0,1,0,0],
   'build/symbolic.wasm': [27],
   'build/showcase.wasm': [5,7,9,58,64,139,154,0,1,0,-1,0,0,1,0,0,27],
+  'build/polynomial.wasm': [11],
 };
 (async () => {
   for (const [file, want] of Object.entries(expected)) {

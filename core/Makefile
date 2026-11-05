@@ -8,7 +8,7 @@
 CC ?= cc
 CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Werror
 CLANG ?= clang
-MODULES = array geometry symbolic showcase
+MODULES = array geometry symbolic showcase polynomial
 
 .PHONY: all test flat-test run-check negatives skull-test modules clean
 all: build/ramc build/flat_check build/flat_lower build/ram_codegen
@@ -40,6 +40,8 @@ modules: $(MODULES:%=build/%.wasm)
 
 flat-test: $(MODULES:%=build/%.flat)
 	grep -q 'OP 0 AFFINE' build/symbolic.flat
+	grep -q 'OP 0 POLY' build/polynomial.flat
+	grep -q 'canonical deg=2 coeffs=5 5 -1' build/polynomial.ir.cert
 	grep -q 'OP 4 TRANSPOSE' build/array.flat
 	@echo 'PASS typed FLAT validation'
 

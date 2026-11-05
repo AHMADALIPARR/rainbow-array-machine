@@ -470,3 +470,9 @@ unchanged this stage.
   detected at row 1, col 7 (bit 4), 2070 -> 2060. The printed
   "borrow propagated through 7 bit positions" reports the
   column index from the left edge.
+
+## V3 Stage 1 — Wolfram symbolic core in the core pipeline (2026-11-05)
+- core: new 🐺 🔹 ✨ polynomial statement (ramc): terms (coeff, power), coefficients ±1e6, powers 0..32, ≤64 terms; normalization = collect like terms, drop zero terms, canonical ascending dense form; POLY op through flat_check (rank 0, operands deg+2) and flat_lower unchanged; codegen lowers to kernel poly_eval (Horner); executed example: (2,1)+(3,1)+(5,0)+(0,3)+(-1,2) at x=2 -> canonical deg 2 coeffs 5 5 -1 -> 11 (module PASS in make test, suite fully green); tampered FLAT2 coefficient -> in-module assertion rc 200.
+- 🛡️ certificate: ramc writes <program>.ir.cert when ✨ is present (CERT v1 lines: rules fired, original terms, canonical form); build/polynomial.ir.cert content is asserted by the flat-test target.
+- Proofs: core/proofs/Polynomial.lean — collect_like_terms, drop_zero_term, horner_step over ℤ, lake build exit 0 (Mathlib v4.9.0 project, temporary lean_lib reverted).
+- semantics/: wolfram.md (the symbolic core layer) and piet.md (Piet layer: 18-color transition semantics; each painting block a Genmoji — glyph is surface, color geometry is code; executor future work in the canvas layer).
