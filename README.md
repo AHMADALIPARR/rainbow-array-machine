@@ -88,3 +88,24 @@ The cassette artwork is a proposed project identity, not embedded in this source
 `✨` is symbolic simplification by collecting like terms, `📜` emits a flat scalar IR, and `🛡️` emits a narrowly scoped algebraic certificate. The certificate establishes the polynomial identity over mathematical integers; it is **not** a formal proof of overflow-free i64 execution. No arbitrary Wolfram expressions, tensors, integration, or actual Wolfram library integration are supported.
 
 A future optional WSTP adapter could use a separately installed, appropriately licensed Wolfram Engine and compare outputs with this independent reference implementation. That adapter is not part of this release.
+
+## v0.3: UTF-8 emoji to WAT backend
+
+Run `make wat-test` to emit and inspect `examples/wat/vector.wat` and
+`examples/wat/symbolic.wat`. This is **real WAT source**, not yet a `.wasm`
+binary. Compile the WAT with an external WebAssembly text assembler such as
+`wat2wasm` (WABT). That tool is not bundled.
+
+Supported v0.3 lowering: exactly one statement per module; BQN/APL/K vector
+addition, subtraction, or elementwise multiplication with embedded f64 inputs,
+exported `run()` and exported linear `memory` containing the resulting vector;
+Wolfram-compatible `🐺 🔹 📜 a b c` symbolic affine expression exports
+`run(x:i64)->i64` for `(a+b)*x+c`. The latter uses **wrapping i64 WebAssembly
+arithmetic**, so its runtime behavior differs from unbounded mathematical
+integers on overflow. It does not invoke Wolfram Engine. Other instructions
+are rejected by the WAT compiler. Source is Unicode UTF-8, with emoji tokens
+separated by ASCII whitespace; no reliance on grapheme-length or emoji bytes.
+
+For the vector example, output values are stored as little-endian f64 at
+byte offsets 0, 8, and 16. There is no dynamic allocation in the generated
+module. The original interpreter remains available as `./ram`.
