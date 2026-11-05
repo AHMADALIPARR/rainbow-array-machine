@@ -22,7 +22,7 @@ owners: Nova Parr, Ahmad Ali Parr, and Team HoloTwinKitty
 license_file: LICENSE
 license_spdx: LicenseRef-Sovereign-Leviathan-SL-AGPL3-001
 license_sha256: 6f26b3c4a6017597ef0a302b31125dbb9848b77129d598b503ad33818acbf8a6
-baseline_commit: 38577c3df150b87890e7021079cb558e4d1cdbbe
+baseline_commit: 2096fecf10901709e582cd8ce36f995ad7d1fdda
 architecture: WebAssembly
 execution_target: WebAssembly (.wasm), standalone per-program modules
 serialization: skull/crown (.skull) — decoded before load; not an execution layer
@@ -31,7 +31,7 @@ verify_command: ./cold-boot.sh
 suites: test,test-ir,test-flat,test-skull,test-inv,test-geom,test-array-c,core-test
 <!-- COLD-BOOT:FIELDS:END -->
 
-seal: d53a2305bdb4e3248ab246b6eb4a317f41faa33e5c295123b4734acb239661ff
+seal: acfb3f2c4a1fa28dbff0c4b1fa7c8b98eb5e045915811f4b6550d573552337b2
 
 ## The scoping pass
 
