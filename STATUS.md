@@ -411,3 +411,9 @@ unchanged this stage.
   Python's perf_counter around subprocess runs (median of 5);
   execution timed in Node over 20,000–50,000 run() calls per round
   (median of 5 rounds), AMD EPYC 9D25 VM, Clang 23, Node 24.
+- Cold Boot resealed on the v1 baseline (this launch): field block
+  updated (baseline = the launch integration commit, suites = the
+  eight surviving suites, entry points name the core), seal
+  cd1b29dd1d6f19063b52d9174b3f0674f6364e1436467e3147f1404740a1ed70;
+  the retired traceback artifact gate is replaced by a core
+  theorem-file integrity gate. Full pass at reseal: 16/16 gates.

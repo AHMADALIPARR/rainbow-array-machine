@@ -52,10 +52,8 @@ OLDIFS=$IFS; IFS=,
 for t in $SUITES; do gate "suite_$t" make "$t"; done
 IFS=$OLDIFS
 
-# 7. Artifacts: traceback byte-equality + skull decode round trip.
-gate artifact_traceback python3 src/ram_traceback.py \
-    examples/runtime-array/symbolic.ram examples/runtime-array/symbolic.wasm \
-    -o "$TMP/Symbolic.lean"
+# 7. Artifacts: core theorem file integrity + skull decode round trip.
+gate artifact_core_theorems sh -c "grep -q '(j \* m + i) % m = i' core/proofs/Arithmetic.lean && ! grep -q 'sorry' core/proofs/Arithmetic.lean"
 ./skull decode examples/runtime-array/vector.skull "$TMP/vector.wasm" 2>"$TMP/skull.log"
 gate artifact_skull cmp "$TMP/vector.wasm" examples/runtime-array/vector.wasm
 

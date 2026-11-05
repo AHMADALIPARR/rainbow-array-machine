@@ -22,16 +22,16 @@ owners: Nova Parr, Ahmad Ali Parr, and Team HoloTwinKitty
 license_file: LICENSE
 license_spdx: LicenseRef-Sovereign-Leviathan-SL-AGPL3-001
 license_sha256: 6f26b3c4a6017597ef0a302b31125dbb9848b77129d598b503ad33818acbf8a6
-baseline_commit: 6733ae28752d791d5505d9608da9010fed662659
-architecture: WebAssembly Stack Machine
-execution_target: WebAssembly (.wasm)
+baseline_commit: 4645def64fa32aec9d23cf3b9cb324778e5ae8c4
+architecture: WebAssembly
+execution_target: WebAssembly (.wasm), standalone per-program modules
 serialization: skull/crown (.skull) — decoded before load; not an execution layer
-entry_points: README.md, STATUS.md, Makefile, src/ram.c, src/ramc.c, src/ram_array_runtime.py, src/ram_runtime.py, src/ram_geometry.py, src/ram_traceback.py
+entry_points: README.md, STATUS.md, Makefile, core/Makefile, core/src/ramc.c, core/src/kernel.c, src/ram.c, src/ramc.c
 verify_command: ./cold-boot.sh
-suites: test,test-ir,test-flat,test-skull,test-inv,test-geom,wat-test,geometry-test,runtime-test,array-runtime-test,traceback-test
+suites: test,test-ir,test-flat,test-skull,test-inv,test-geom,test-array-c,core-test
 <!-- COLD-BOOT:FIELDS:END -->
 
-seal: 0e1f0c23a24bf73b19df5c10f4d9d0dcdd6de1b45e61b65db57bceb3d968ccae
+seal: cd1b29dd1d6f19063b52d9174b3f0674f6364e1436467e3147f1404740a1ed70
 
 ## The scoping pass
 
@@ -49,10 +49,9 @@ In order, failing closed at the first broken gate:
 4. **Identity** — `make report` states the sealed architecture.
 5. **Build** — the C11 front end builds clean (`-Werror`).
 6. **Suites** — every suite in the sealed list runs and passes.
-7. **Artifacts** — the generative traceback re-derives the
-   symbolic module from its source and demands byte equality;
-   the C skull decoder reproduces a runtime `.wasm` from its
-   shipped `.skull`.
+7. **Artifacts** — the core theorem file carries the
+   strengthened transpose statement and no `sorry`; the C skull
+   decoder reproduces a runtime `.wasm` from its shipped `.skull`.
 
 The pass prints PROVEN (executed in this run, with counts),
 DECLARED (the sealed fields), and the open list below, and exits
@@ -61,23 +60,26 @@ only the pass output is.
 
 ## Proven at the baseline
 
-- Eleven suites green (see STATUS.md for the per-version record).
-- Geometry and the array/symbolic subsets execute in real WASM
-  binaries, with runtime assertions and tamper evidence.
-- The 💀👑 encoding round-trips byte-for-byte across two
-  independent implementations (C and Python).
-- The generated affine Lean obligation checks in a real Mathlib
-  environment (recorded in STATUS.md with the environment named).
+- Eight suites green, including the core suite: the FLAT2
+  pipeline compiles the examples and the showcase to standalone
+  WASM modules whose operations and assertions execute in-module
+  (see STATUS.md for the launch record).
+- The 💀👑 encoding round-trips byte-for-byte (repo C codec).
+- The three theorems in core/proofs/Arithmetic.lean are
+  kernel-checked with lake build in a Mathlib v4.9.0 environment
+  (exit 0; method and scope recorded in STATUS.md).
 
 ## Claimed / open — not proven, do not merge the lists
 
-- The two runtime compilers are not yet unified into one general
-  typed-FLAT → WASM lowering pipeline.
-- Persistent tensor buffers, ternary arithmetic, Church-3
-  reduction, Unlambda execution, and the flat decoder remain on
-  the owner's "what comes next" list in STATUS.md.
-- `traceback-proof` inside this repo fails closed: no Lean
-  project is configured here.
+- FLAT2 is a validated metadata+payload format, not yet an SSA
+  IR with buffer allocation or a type-soundness proof; WASM↔spec
+  equivalence is not claimed (see core/IMPLEMENTATION_STATUS.md).
+- Runtime-input ABI, persistent tensor buffers, ternary
+  arithmetic, Church-3 reduction, Unlambda execution, and the
+  flat decoder remain on the owner's "what comes next" list in
+  STATUS.md.
+- No Lean project is configured in this repo; theorem checking
+  runs in the external Mathlib environment named in STATUS.md.
 
 ## Invariants an arriving agent does not rewrite
 
