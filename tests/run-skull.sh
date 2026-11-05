@@ -38,6 +38,24 @@ import sys; n = len(open('$T.wat.skull','rb').read()); src = len(open('examples/
 assert n == src*33, (n, src)  # 8 symbols x 4 bytes + 1 newline per source byte
 print(f'size law: {src} bytes -> {n} bytes (33x in canonical line form, 32x symbols alone)')"
 
+# invert: the owner's worked NOT vector (0x65), involution, and
+# decode(invert(x)) == bitwise NOT of decode(x) over all byte values.
+printf '\145' > $T.b65
+./skull encode $T.b65 $T.b65.skull
+python3 -c "open('$T.want','w',encoding='utf-8').write('💀👑👑💀💀👑💀👑\n')"
+cmp $T.b65.skull $T.want || { echo 'FAIL: 0x65 encodes to the owner vector'; exit 1; }
+./skull invert $T.b65.skull $T.b65.inv
+python3 -c "open('$T.want2','w',encoding='utf-8').write('👑💀💀👑👑💀👑💀\n')"
+cmp $T.b65.inv $T.want2 || { echo 'FAIL: invert of the owner vector'; exit 1; }
+./skull invert $T.all.skull $T.all.inv
+./skull invert $T.all.inv $T.all.inv2
+cmp $T.all.skull $T.all.inv2 || { echo 'FAIL: invert is not involutive'; exit 1; }
+./skull decode $T.all.inv $T.all.not
+python3 -c "
+d = open('$T.all','rb').read(); n = open('$T.all.not','rb').read()
+assert n == bytes((~b) & 0xFF for b in d), 'decode(invert(x)) != NOT decode(x)'
+print('invert: owner vector, involution, NOT semantics over all byte values')"
+
 bad() { printf '%b' "$1" > $T.bad.skull; if ./skull decode $T.bad.skull $T.bad.out >/dev/null 2>&1; then echo "FAIL: accepted: $1"; exit 1; fi; }
 bad '\360\237\222\200\360\237\222\200\360\237\222\200\360\237\222\200\360\237\222\200\360\237\222\200\360\237\222\200\n'
 bad '\360\237\224\245\360\237\222\200\360\237\222\200\360\237\222\200\360\237\222\200\360\237\222\200\360\237\222\200\360\237\222\200\n'

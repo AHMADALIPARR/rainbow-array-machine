@@ -42,6 +42,24 @@ static int do_encode(FILE *in,FILE *out){
     }
     free(buf); return 0;
 }
+// Bitwise NOT on the encoded form: swap 💀 and 👑 symbol for
+// symbol. Involutive — inverting twice restores the input. This
+// operates on the representation: it is not a bit reversal and
+// not a decode. Whitespace is preserved; anything else refuses.
+static int do_invert(FILE *in,FILE *out){
+    size_t n; unsigned char *buf=read_all(in,&n);
+    if(!buf){ fprintf(stderr,"skull: input too large\n"); return 1; }
+    size_t pos=0;
+    while(pos<n){
+        unsigned char c=buf[pos];
+        if(c==' '||c=='\t'||c=='\r'||c=='\n'){ fputc(c,out); pos++; continue; }
+        if(pos+4<=n&&!memcmp(buf+pos,SKULL,4)){ if(fwrite(CROWN,1,4,out)!=4){free(buf);return 1;} }
+        else if(pos+4<=n&&!memcmp(buf+pos,CROWN,4)){ if(fwrite(SKULL,1,4,out)!=4){free(buf);return 1;} }
+        else { fprintf(stderr,"skull: invalid symbol at byte offset %zu\n",pos); free(buf); return 1; }
+        pos+=4;
+    }
+    free(buf); return 0;
+}
 static int do_decode(FILE *in,FILE *out){
     size_t n; unsigned char *buf=read_all(in,&n);
     if(!buf){ fprintf(stderr,"skull: input too large\n"); return 1; }
@@ -62,12 +80,13 @@ static int do_decode(FILE *in,FILE *out){
     return 0;
 }
 int main(int argc,char **argv){
-    if(argc!=4||(strcmp(argv[1],"encode")&&strcmp(argv[1],"decode"))){
-        fprintf(stderr,"usage: skull (encode|decode) <input> <output>\n"); return 2;
+    if(argc!=4||(strcmp(argv[1],"encode")&&strcmp(argv[1],"decode")&&strcmp(argv[1],"invert"))){
+        fprintf(stderr,"usage: skull (encode|decode|invert) <input> <output>\n"); return 2;
     }
     FILE *in=fopen(argv[2],"rb"); if(!in){perror(argv[2]);return 2;}
     FILE *out=fopen(argv[3],"wb"); if(!out){perror(argv[3]);fclose(in);return 2;}
-    int rc= !strcmp(argv[1],"encode")?do_encode(in,out):do_decode(in,out);
+    int rc= !strcmp(argv[1],"encode")?do_encode(in,out)
+          : !strcmp(argv[1],"decode")?do_decode(in,out):do_invert(in,out);
     fclose(in);
     if(fclose(out)!=0&&rc==0) rc=1;
     if(rc!=0) remove(argv[3]);
