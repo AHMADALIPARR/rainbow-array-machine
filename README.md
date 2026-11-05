@@ -145,6 +145,7 @@ Inverse:      ↶
 | `src/ram_geometry.py` | 📐 Geometry compiler — GRID, the @@ bridge, Geometric FLAT |
 | `src/ram_runtime.py` | 🕸️ Hand-assembled WASM — geometry transforms + assertions execute in `run()` |
 | `src/ram_array_runtime.py` | 🕸️ Hand-assembled WASM — vector ops loop in-module; affine `run(x)` exported |
+| `src/ram_array_runtime.c` | 🛠️ The C11 twin of the array runtime — byte-identical artifacts, no Python (`make test-array-c`) |
 | `src/ram_traceback.py` | 🔄 Generative traceback — artifact/source byte equality + generated Lean proof obligations |
 | `src/skull.c` | 💀👑 Skull & Crown — `encode` · `decode` · `invert` |
 | `proofs/` | 📜 Generated Lean obligations + hash evidence records |

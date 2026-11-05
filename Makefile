@@ -1,10 +1,12 @@
 CC ?= cc
 CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Werror -pedantic
 .PHONY: all test test-ir test-flat test-skull test-inv test-geom clean
-all: ram ramc flat skull
+all: ram ramc flat skull ram-array-runtime
 ram: src/ram.c
 	$(CC) $(CFLAGS) -o $@ $< -lm
 ramc: src/ramc.c
+	$(CC) $(CFLAGS) -o $@ $< -lm
+ram-array-runtime: src/ram_array_runtime.c
 	$(CC) $(CFLAGS) -o $@ $< -lm
 flat: src/flat.c
 	$(CC) $(CFLAGS) -o $@ $<
@@ -22,8 +24,14 @@ test-inv: ramc
 	sh tests/run-inv.sh
 test-geom: ramc
 	sh tests/run-geom.sh
+test-array-c: ram-array-runtime
+	./ram-array-runtime examples/runtime-array/vector.ram -o examples/runtime-array/vector.wasm
+	./ram-array-runtime examples/runtime-array/apl.ram -o examples/runtime-array/apl.wasm
+	./ram-array-runtime examples/runtime-array/k.ram -o examples/runtime-array/k.wasm
+	./ram-array-runtime examples/runtime-array/symbolic.ram -o examples/runtime-array/symbolic.wasm
+	node tests/array_runtime.js
 clean:
-	rm -f ram ramc flat skull
+	rm -f ram ramc flat skull ram-array-runtime
 
 .PHONY: report
 report:

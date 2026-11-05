@@ -333,6 +333,28 @@ SnapKitty West's, and no MIT license text exists anywhere in
 the tree. Cold Boot still passes end-to-end (18 gates) with the
 new README in place; the tree is clean.
 
+## C11 port, stage 1 — the array runtime (owner's call, 2026-11-04)
+
+The owner flagged that the generator layer is Python while the
+stack is WASM. The Python generators are his own shipped code
+(zips v0.3–v0.7, integrated verbatim); the WASM binaries were
+never Python — but the toolchain now moves to C11, stage by
+stage, with byte identity as the acceptance test:
+
+- `src/ram_array_runtime.c` is a full C11 port of
+  `ram_array_runtime.py`. All 16 artifacts it emits (4 modules ×
+  .wasm/.wat/.flat.json/.skull) are **byte-identical** to the
+  Python generator's, and the C-built modules pass the Node
+  harness (`make test-array-c` regenerates in place and the
+  tracked tree does not change). The Python original stays in
+  the tree untouched; the C twin is the path forward.
+- Still Python, staged next in the same pattern: the geometry
+  compiler (`ram_geometry.py`), the geometry runtime
+  (`ram_runtime.py`), the WAT backend (`ram_wat.py`), and the
+  traceback (`ram_traceback.py`).
+Cold Boot still passes (18 gates); the sealed suite list is
+unchanged this stage.
+
 ## The remaining "what comes next" list (owner's order)
 
 1. ~~A genuine typed compiler IR~~ — done above (v0.2 core).
