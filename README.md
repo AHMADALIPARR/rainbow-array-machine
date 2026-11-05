@@ -137,3 +137,17 @@ checked at compile time against the finite sample, not universally proven.
 Run `make geometry-test` or
 `python3 src/ram_geometry.py examples/geometry/grid.ram -o examples/geometry/grid.wat`.
 The WAT is not assembled into `.wasm` without an external WAT assembler.
+
+## v0.5 Runtime WASM + 💀👑 binary
+
+`src/ram_runtime.py` compiles the geometry subset into **actual WebAssembly binary**, a readable `.wat` listing, a `.flat.json` manifest, and a reversible `.skull` UTF-8 representation. Unlike v0.4, transforms execute when the exported WASM `run()` function is called, and point assertions are evaluated by the WASM function. The compiler also checks the same assertions during source validation.
+
+```sh
+make runtime-test
+python3 src/ram_runtime.py examples/geometry/grid.ram -o examples/geometry/grid-runtime.wasm
+node tests/runtime.js examples/geometry/grid-runtime.wasm
+python3 src/ram_runtime.py --decode examples/geometry/grid-runtime.skull -o /tmp/roundtrip.wasm
+cmp examples/geometry/grid-runtime.wasm /tmp/roundtrip.wasm
+```
+
+`💀` means bit 0, `👑` means bit 1, most-significant bit first. Whitespace is ignored on decoding; every eight emojis represent one byte. This is lossless encoding, not compression or encryption. The `.wat` is a textual rendering of the generated instruction sequence, not an independently assembled build input. `@@` is RAM-specific syntax inspired by KCL, not a claim of native KCL support. Current limitations: one grid, integer coordinates, exact quarter-turn Z rotations, integer translation, point/shape assertions; no arbitrary geometry, floating point, or Wolfram engine integration.

@@ -2,3 +2,4 @@ ram
 ramc
 flat
 skull
+examples/geometry/grid-roundtrip.wasm
