@@ -3,4 +3,3 @@ ramc
 flat
 skull
 __pycache__/
-examples/runtime-array/*.roundtrip.wasm

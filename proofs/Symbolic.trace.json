@@ -1,0 +1,20 @@
+{
+  "wasm_sha256": "f473f8ed9b7f403236b43bd6a6378a9b9c8e7f3b823523e70fe5a54d6102d40d",
+  "source_sha256": "e66bcfd2ad8210c882bdb2d351104f576fc880646082c14aa5b9eb290fbf4c3b",
+  "kind": "affine-i64",
+  "manifest": {
+    "kind": "affine-i64",
+    "language": "Wolfram-compatible subset",
+    "coefficients": [
+      5,
+      7
+    ],
+    "arithmetic": "modulo 2^64"
+  },
+  "obligations": [
+    "affine coefficient collection over \u2124"
+  ],
+  "artifact_match": true,
+  "lean_status": "not_checked",
+  "scope": "source-to-artifact byte equality and abstract algebraic obligation only"
+}

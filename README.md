@@ -157,3 +157,19 @@ cmp examples/geometry/grid-runtime.wasm /tmp/roundtrip.wasm
 `make array-runtime-test` compiles BQN/APL/K-qualified f64 vector add/subtract/multiply and the standalone Wolfram-compatible affine i64 subset into **real WebAssembly binaries**. Node.js instantiates the modules and verifies runtime outputs. The vector compiler places input operands in linear memory and performs arithmetic inside a runtime WASM loop. It also writes matching WAT, a FLAT-layout JSON manifest, and a reversible 💀👑 `.skull` serialization.
 
 This is **not** a complete lowering of all array, geometry, or Wolfram operations: supported vector operations are fixed-length f64, the symbolic subset is affine i64 with wraparound arithmetic, and the two runtime compilers are not yet unified into a general typed FLAT lowering pipeline. No licensed Wolfram Engine is invoked. Unsupported operations are rejected.
+
+## v0.7 experimental generative traceback / Mathlib obligations
+
+`make traceback-test` verifies that a supplied WASM artifact matches deterministic
+recompilation of the supplied emoji source, records SHA-256 digests, and generates
+`proofs/Symbolic.lean` plus a `.trace.json` evidence record. It rejects altered
+artifacts. The generated Lean file has **exactly one import: `import Mathlib`**.
+`make traceback-proof` additionally requires a configured Lean/mathlib installation
+and runs the generated theorem through `lake env lean`; it fails if unavailable.
+
+The bounded implementation handles the affine-i64 and vector-f64 subsets. The
+Lean obligations establish integer algebraic identities or pointwise mappings;
+they do **not** establish IEEE-754 correctness, WASM execution equivalence,
+compiler correctness, or recover unknown agent internal states. Matching the
+compiler output is artifact consistency, not independent reverse engineering.
+No proof is reported as checked unless Lean actually runs successfully.
