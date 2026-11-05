@@ -22,7 +22,7 @@ owners: Nova Parr, Ahmad Ali Parr, and Team HoloTwinKitty
 license_file: LICENSE
 license_spdx: LicenseRef-Sovereign-Leviathan-SL-AGPL3-001
 license_sha256: 6f26b3c4a6017597ef0a302b31125dbb9848b77129d598b503ad33818acbf8a6
-baseline_commit: 4645def64fa32aec9d23cf3b9cb324778e5ae8c4
+baseline_commit: 38577c3df150b87890e7021079cb558e4d1cdbbe
 architecture: WebAssembly
 execution_target: WebAssembly (.wasm), standalone per-program modules
 serialization: skull/crown (.skull) — decoded before load; not an execution layer
@@ -31,7 +31,7 @@ verify_command: ./cold-boot.sh
 suites: test,test-ir,test-flat,test-skull,test-inv,test-geom,test-array-c,core-test
 <!-- COLD-BOOT:FIELDS:END -->
 
-seal: cd1b29dd1d6f19063b52d9174b3f0674f6364e1436467e3147f1404740a1ed70
+seal: d53a2305bdb4e3248ab246b6eb4a317f41faa33e5c295123b4734acb239661ff
 
 ## The scoping pass
 
@@ -68,6 +68,10 @@ only the pass output is.
 - The three theorems in core/proofs/Arithmetic.lean are
   kernel-checked with lake build in a Mathlib v4.9.0 environment
   (exit 0; method and scope recorded in STATUS.md).
+- CompCert 3.12 lowers all 10 host C programs to assembly
+  (compcert/asm/), differentials byte-exact against the gcc builds
+  (seal output sha 3b2ae65b...; core tools' IR/FLAT2/generated C
+  identical on polynomial + showcase).
 
 ## Claimed / open — not proven, do not merge the lists
 

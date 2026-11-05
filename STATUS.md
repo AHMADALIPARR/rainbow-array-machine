@@ -483,3 +483,12 @@ unchanged this stage.
 - Differentials, all byte-exact: CompCert-built seal output == gcc-built seal output (221 lines, sha256 3b2ae65bdc2d636d...); CompCert-built core tools produce byte-identical IR, FLAT2 and generated C to the gcc-built tools on polynomial + showcase. lower.sh now encodes the full verified procedure (shim, flag, byte diffs).
 - A CompCert 3.14 fallback at ~/workspace/tools-build also lowered the seal byte-identically (independent early confirmation); production chain is 3.12.
 - Scope reminder: CompCert proves C->assembly preservation for these programs; C correctness evidence remains the suites + Lean theorems; WASM modules stay clang-built.
+
+## Cold Boot reseal — post-V3 / post-CompCert baseline (2026-11-05)
+- Cold Boot resealed on HEAD 38577c3 (13 commits past the v1
+  baseline: V3 drops, semantics/Stage 1, CompCert lowering +
+  binary untracking). Field block updated (baseline only); seal
+  d53a2305bdb4e3248ab246b6eb4a317f41faa33e5c295123b4734acb239661ff.
+  Proven-at-baseline now also records the CompCert lowering
+  (10 programs, byte-exact differentials). Full pass at reseal:
+  16/16 gates.
