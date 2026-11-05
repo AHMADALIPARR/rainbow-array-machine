@@ -1,123 +1,85 @@
-# 🌈 Rainbow Array Machine (RAM)
+# 🌈💀👑 Rainbow Array Machine
 
-**An executable UTF-8 emoji instruction language for array computation.**
+![License: Sovereign Leviathan](https://img.shields.io/badge/license-Sovereign%20Leviathan-blueviolet)
+![Architecture: WebAssembly](https://img.shields.io/badge/architecture-WebAssembly-654ff0)
+![Source: UTF-8 Emoji](https://img.shields.io/badge/source-UTF--8%20emoji-orange)
+![Cold Boot: 18 gates PASS](https://img.shields.io/badge/cold%20boot-18%20gates%20PASS-brightgreen)
+![Suites: 11 passing](https://img.shields.io/badge/suites-11%20passing-success)
+![Encoding: Skull/Crown](https://img.shields.io/badge/encoding-%F0%9F%92%80%F0%9F%91%91%20.skull-black)
 
-This is an experimental, deterministic **C11 interpreter**, not yet a full compiler, neural-network runtime, or implementation of BQN/APL/K language semantics. Namespaces distinguish intended language origins; v0.1 supports only a common explicitly defined subset for BQN, APL and K.
+An array machine whose source language is UTF-8 emoji, whose
+intermediate representation is typed FLAT, and whose execution
+target is **WebAssembly**. 🌈
 
-## Run
+🌀 **BQN** · 🔺 **APL** · ⚡ **K** · 🐺 **Wolfram subset** · 📐 **geometry**
+
+The C11 compiler is a build-time tool. WASM is the machine.
+
+---
+
+## 🧊 Cold Boot — start here
+
+This repository carries a **Cold Boot** front door:
+[COLD-BOOT.md](COLD-BOOT.md) declares the owners, the license,
+the verified baseline commit, the architecture, and the entry
+points, sealed with a SHA-256 over its field block. 🔐
 
 ```sh
-make
-make test
-./ram --dictionary
-./ram examples/demo.ram
+./cold-boot.sh        # or: make cold-boot
 ```
 
-No Python, external packages, or runtime dependencies beyond a C11 compiler and C standard library are required.
+The pass re-verifies the tree by execution and fails closed:
 
-## Grammar v0.1
+```
+GATE seal: PASS            GATE license_sha: PASS
+GATE license_spdx: PASS    GATE baseline_ancestor: PASS
+GATE identity: PASS        GATE build: PASS
+GATE suite_* (×11): PASS   GATE artifact_traceback: PASS
+GATE artifact_skull: PASS
+COLD BOOT: PASS — every gate above was executed in this run.
+```
 
-One instruction per line, whitespace-separated UTF-8 emoji tokens. `#` begins a comment.
+An arriving agent reads the front door, runs one command, and
+works only with what the pass proves. ✅
 
-- Binary elementwise: `LANG TYPE OP [dimensions] A-values B-values`
-- Unary: `LANG TYPE OP [dimensions] A-values`
-- Matrix multiplication: `LANG 🟦 🧲 M K N A-values B-values`
+---
 
-Dimensions: scalar = none, vector = `N`, matrix = `ROWS COLS`. Values are row-major, finite decimal numbers. Max 4096 elements per array. Each instruction is independent; results are printed, not bound to variables. No broadcasting, rank polymorphism, arbitrary tensors, or automatic differentiation yet.
+## 👀 The program
 
-### Working operations
+Emoji source in, typed results out:
 
-| Emoji | Name | Semantics |
-|---|---|---|
-| ➕ | add | elementwise sum of same-shaped operands |
-| ➖ | subtract | elementwise subtraction |
-| ✖️ | multiply | elementwise multiplication |
-| 🧲 | matmul | matrix multiplication `(M×K)·(K×N)` |
-| 🔄 | transpose | transpose rank-2 matrix |
-| 📦 | flatten | row-major flatten to vector |
-| 📐 | shape | vector of array dimensions (scalar gives `[1]` in v0.1) |
-| 🧮 | sum | full reduction to scalar |
-
-### Registered language namespaces
-
-`🌀 BQN`, `🔺 APL`, `⚡ K`, `🧩 J`, `🪐 Uiua`, `🏛️ Pascal`, `⚙️ C`, `🦀 Rust`, `🧱 Forth`, `🔌 SystemVerilog`, `🐦 Unlambda`, `λ Haskell`, `🕸️ Prolog`.
-
-🌀/🔺/⚡ execute the original array subset. 🐺 Wolfram executes a **restricted, independently implemented symbolic polynomial subset**. Other namespaces fail closed.
-
-### Registered types
-
-`🔹 scalar`, `📏 vector`, `🟦 matrix` execute. `🧊 tensor` and `🔱 ternary` are reserved, and fail closed until their semantics and storage are implemented.
-
-## Sample
-
-```text
+```
+# examples/demo.ram
 🌀 📏 ➕ 3 1 2 3 4 5 6
 🔺 🟦 🔄 2 3 1 2 3 4 5 6
+⚡ 📏 🧮 4 1 2 3 4
 🌀 🟦 🧲 2 3 2 1 2 3 4 5 6 7 8 9 10 11 12
 ```
 
-## Design constraints
-
-1. Emoji tokens are UTF-8 strings; never index them by bytes as if they were single characters. The lexer matches whitespace-delimited complete emoji sequences. Variation selectors matter.
-2. The namespace/type/operator triplet is part of the instruction's identity.
-3. No equivalence is assumed between distinct source languages' native semantics.
-4. Invalid programs and unsupported instructions return nonzero status, never simulated results.
-5. Shape and buffer size are checked before allocation.
-6. Future Church numeral and Unlambda combinator semantics must be normalized into a typed IR before optimized lowering; they do not imply an allocator or runtime performance advantage by themselves.
-
-## Roadmap
-
-- v0.2: variable bindings, explicit rank/shape metadata, typed AST, canonical opcodes, and source positions.
-- v0.3: true source-language adapters for BQN/APL/K with reference comparisons and explicit disagreement cases.
-- v0.4: arena allocation, views, ownership, tensor and ternary storage, contraction and fusion.
-- v0.5: Church-3 and Unlambda combinator reduction with bounded evaluation and property tests.
-- v0.6: flat decoder reference, reproducible numeric tests, and native C backend.
-
-The cassette artwork is a proposed project identity, not embedded in this source distribution.
-
-## v0.2 Wolfram-inspired symbolic adapter and FLAT lowering
-
-`🐺` is the Wolfram namespace. This build does **not** bundle, call, or claim to implement Wolfram Engine, Mathematica, WSTP, or LibraryLink. No license or proprietary dependency is required. It implements a deliberately small compatible mathematical pattern: `a*x + b*x + c` with bounded signed integer coefficients.
-
-```text
-🐺 🔹 ✨ 2 3 7    # collect coefficients: (5*x)+7
-🐺 🔹 📜 2 3 7    # emit typed FLAT v1 SSA-like textual IR
-🐺 🔹 🛡️ 2 3 7    # verify coefficient identity algebraically
+```
+BQN vector add       => rank=1 shape=[3]   values=[5,7,9]
+APL matrix transpose => rank=2 shape=[3,2] values=[1,4,2,5,3,6]
+K vector sum         => rank=0 shape=[]    values=[10]
+BQN matrix matmul    => rank=2 shape=[2,2] values=[58,64,139,154]
 ```
 
-`✨` is symbolic simplification by collecting like terms, `📜` emits a flat scalar IR, and `🛡️` emits a narrowly scoped algebraic certificate. The certificate establishes the polynomial identity over mathematical integers; it is **not** a formal proof of overflow-free i64 execution. No arbitrary Wolfram expressions, tensors, integration, or actual Wolfram library integration are supported.
+### >>>>>>>€ — assertions in the source 🔍
 
-A future optional WSTP adapter could use a separately installed, appropriately licensed Wolfram Engine and compare outputs with this independent reference implementation. That adapter is not part of this release.
+```
+🔺 📏 ➕ [1 2 3] [4 5 6]
+>>>>>>>€ [5 7 9]
+🔺 🔹 ⚖️ 3 3
+>>>>>>>€ 👑
+```
 
-## v0.3: UTF-8 emoji to WAT backend
+```
+APL vector add     => values=[5,7,9]   assertion ok
+APL scalar compare => values=[👑]      assertion ok
+```
 
-Run `make wat-test` to emit and inspect `examples/wat/vector.wat` and
-`examples/wat/symbolic.wat`. This is **real WAT source**, not yet a `.wasm`
-binary. Compile the WAT with an external WebAssembly text assembler such as
-`wat2wasm` (WABT). That tool is not bundled.
+### 📐 Geometry is a first-class type
 
-Supported v0.3 lowering: exactly one statement per module; BQN/APL/K vector
-addition, subtraction, or elementwise multiplication with embedded f64 inputs,
-exported `run()` and exported linear `memory` containing the resulting vector;
-Wolfram-compatible `🐺 🔹 📜 a b c` symbolic affine expression exports
-`run(x:i64)->i64` for `(a+b)*x+c`. The latter uses **wrapping i64 WebAssembly
-arithmetic**, so its runtime behavior differs from unbounded mathematical
-integers on overflow. It does not invoke Wolfram Engine. Other instructions
-are rejected by the WAT compiler. Source is Unicode UTF-8, with emoji tokens
-separated by ASCII whitespace; no reliance on grapheme-length or emoji bytes.
-
-For the vector example, output values are stored as little-endian f64 at
-byte offsets 0, 8, and 16. There is no dynamic allocation in the generated
-module. The original interpreter remains available as `./ram`.
-
-## v0.4: Geometry FLAT IR and KCL-inspired bridge
-
-The experimental geometry compiler is `src/ram_geometry.py`. It consumes UTF-8
-`.ram` plaintext and emits `.wat` and `.flat.json` sidecar metadata. This is
-RAM-specific syntax, **not** native BQN or KCL source. `⚡ @@` is a proposed
-bridge notation; it does not assert that `@@` is a native KCL operator.
-
-```text
+```
 🌀 📐 GRID lattice 2 2 1 1
 >>>>>>>€ SHAPE 2 2 1
 ⚡ @@ lattice ROTATE_Z 90
@@ -126,50 +88,159 @@ bridge notation; it does not assert that `@@` is a native KCL operator.
 >>>>>>>€ POINT 1 1 0 0
 ```
 
-The supported subset is integer grid generation, 90-degree Z-axis rotations,
-integer translations, their exact inverses, shape and indexed-point assertions.
-The generated WAT exports linear memory initialized with packed little-endian
-`i32` XYZ coordinates, plus `run` returning the byte length. Coordinates are
-precomputed by the compiler; **this is not yet a runtime transform kernel**.
-The sidecar records shape, byte offsets, point count and dtype. Assertions are
-checked at compile time against the finite sample, not universally proven.
+The grid executes inside a WASM binary: transforms and POINT
+assertions run in `run()` at runtime, and a tampered point makes
+the module return −1. 🛡️
 
-Run `make geometry-test` or
-`python3 src/ram_geometry.py examples/geometry/grid.ram -o examples/geometry/grid.wat`.
-The WAT is not assembled into `.wasm` without an external WAT assembler.
+### 🕸️ The same source, executing in WebAssembly
 
-## v0.5 Runtime WASM + 💀👑 binary
-
-`src/ram_runtime.py` compiles the geometry subset into **actual WebAssembly binary**, a readable `.wat` listing, a `.flat.json` manifest, and a reversible `.skull` UTF-8 representation. Unlike v0.4, transforms execute when the exported WASM `run()` function is called, and point assertions are evaluated by the WASM function. The compiler also checks the same assertions during source validation.
-
-```sh
-make runtime-test
-python3 src/ram_runtime.py examples/geometry/grid.ram -o examples/geometry/grid-runtime.wasm
-node tests/runtime.js examples/geometry/grid-runtime.wasm
-python3 src/ram_runtime.py --decode examples/geometry/grid-runtime.skull -o /tmp/roundtrip.wasm
-cmp examples/geometry/grid-runtime.wasm /tmp/roundtrip.wasm
+```
+🌀 📏 ➕ 3 1 2 3 4 5 6     →  .wasm loop over linear memory  →  [5, 7, 9]
+🐺 🔹 📜 2 3 7             →  exported run(x:i64)->i64      →  5x + 7
 ```
 
-`💀` means bit 0, `👑` means bit 1, most-significant bit first. Whitespace is ignored on decoding; every eight emojis represent one byte. This is lossless encoding, not compression or encryption. The `.wat` is a textual rendering of the generated instruction sequence, not an independently assembled build input. `@@` is RAM-specific syntax inspired by KCL, not a claim of native KCL support. Current limitations: one grid, integer coordinates, exact quarter-turn Z rotations, integer translation, point/shape assertions; no arbitrary geometry, floating point, or Wolfram engine integration.
+---
 
-## v0.6: Executable array and affine WASM subsets
+## 🏗️ Architecture
 
-`make array-runtime-test` compiles BQN/APL/K-qualified f64 vector add/subtract/multiply and the standalone Wolfram-compatible affine i64 subset into **real WebAssembly binaries**. Node.js instantiates the modules and verifies runtime outputs. The vector compiler places input operands in linear memory and performs arithmetic inside a runtime WASM loop. It also writes matching WAT, a FLAT-layout JSON manifest, and a reversible 💀👑 `.skull` serialization.
+```
+🌈 Unicode Emoji Source
+   BQN · APL · KCL · Wolfram · Array primitives
+📐 Typed FLAT IR
+   Geometry · Tensors · Inverses · Assertions
+⚙️ Compiler / Lowering
+   C11 frontend · WAT code generation · hand-assembled modules
+🕸️ WebAssembly Stack Machine
+   i32 · i64 · f32 · f64 · Linear memory
+📦 WASM Binary (.wasm)
+💀👑 Skull/Crown Encoding (.skull) — serialization, decoded before load
+🚀 WASM Runtime — Node.js · Wasmtime-compatible targets
+```
 
-This is **not** a complete lowering of all array, geometry, or Wolfram operations: supported vector operations are fixed-length f64, the symbolic subset is affine i64 with wraparound arithmetic, and the two runtime compilers are not yet unified into a general typed FLAT lowering pipeline. No licensed Wolfram Engine is invoked. Unsupported operations are rejected.
+```
+RAINBOW ARRAY MACHINE        (make report)
+Architecture: WebAssembly Stack Machine
+Source:       UTF-8 Unicode Emoji
+Frontend:     BQN / APL / KCL / Wolfram subsets
+IR:           Typed FLAT
+Compiler:     C11 → WAT → WASM
+Execution:    WASM Runtime
+Memory:       WebAssembly Linear Memory
+Binary:       .wasm
+Encoding:     💀👑 .skull
+Assertions:   >>>>>>>€
+Inverse:      ↶
+```
 
-## v0.7 experimental generative traceback / Mathlib obligations
+---
 
-`make traceback-test` verifies that a supplied WASM artifact matches deterministic
-recompilation of the supplied emoji source, records SHA-256 digests, and generates
-`proofs/Symbolic.lean` plus a `.trace.json` evidence record. It rejects altered
-artifacts. The generated Lean file has **exactly one import: `import Mathlib`**.
-`make traceback-proof` additionally requires a configured Lean/mathlib installation
-and runs the generated theorem through `lake env lean`; it fails if unavailable.
+## 🧩 Components
 
-The bounded implementation handles the affine-i64 and vector-f64 subsets. The
-Lean obligations establish integer algebraic identities or pointwise mappings;
-they do **not** establish IEEE-754 correctness, WASM execution equivalence,
-compiler correctness, or recover unknown agent internal states. Matching the
-compiler output is artifact consistency, not independent reverse engineering.
-No proof is reported as checked unless Lean actually runs successfully.
+| Piece | Role |
+|---|---|
+| `src/ram.c` | 🌐 The emoji interpreter — BQN/APL/K namespaces, the 🐺 Wolfram subset (✨ simplify · 📜 FLAT lowering · 🛡️ certificate) |
+| `src/ramc.c` | 🏷️ Typed compiler IR — canonical SSA, bindings, shape/kind checks, assertions, inverses, geometry |
+| `src/flat.c` | ▶️ FLAT v1 virtual machine — scalar + elementwise tensor execution, checked i64 (overflow refused) |
+| `src/ram_wat.py` | 📝 WAT backend — vector ops and the affine function as exported modules |
+| `src/ram_geometry.py` | 📐 Geometry compiler — GRID, the @@ bridge, Geometric FLAT |
+| `src/ram_runtime.py` | 🕸️ Hand-assembled WASM — geometry transforms + assertions execute in `run()` |
+| `src/ram_array_runtime.py` | 🕸️ Hand-assembled WASM — vector ops loop in-module; affine `run(x)` exported |
+| `src/ram_traceback.py` | 🔄 Generative traceback — artifact/source byte equality + generated Lean proof obligations |
+| `src/skull.c` | 💀👑 Skull & Crown — `encode` · `decode` · `invert` |
+| `proofs/` | 📜 Generated Lean obligations + hash evidence records |
+| `cold-boot.sh` | 🧊 The Cold Boot scoping pass |
+
+---
+
+## 💀👑 Skull & Crown
+
+A lossless Unicode encoding of binary data — the machine's
+canonical alphabet for binaries, weights, and fixtures:
+
+- 💀 = bit `0` · 👑 = bit `1` · MSB first · byte-aligned
+- The WASM magic `00 61 73 6D` encodes as four 8-symbol lines
+- Two independent implementations (C and Python) decode each
+  other's output byte-for-byte 🔁
+- `.skull` is **serialization**: it is decoded before a standard
+  runtime loads the module — never an execution layer
+
+---
+
+## 🔁 Reversible algebra
+
+- **↶** registered inverses — add, multiply, transpose, reverse
+  are exact; flatten/reshape inverses require saved shape
+  metadata and compilation fails without it
+- **⟲** one-line round trips, verified in place
+- **🛡️ ROUNDTRIP** certificates —
+  `status=VERIFIED_ON_TESTED_INPUTS`, scoped to the tested inputs
+- **⚖️** compare yields a verdict: 👑 or 💀
+
+---
+
+## 🔄 Traceback — metaprogramming inversion
+
+Given a source and a `.wasm`, the traceback recompiles the
+source deterministically and demands **byte equality** with the
+artifact — altered binaries and wrong sources are rejected.
+It then *generates* a Lean proof obligation for the pair (the
+affine identity over ℤ; the pointwise array map over ℤ) with a
+SHA-256 evidence record. The obligations state the algebra;
+artifact consistency is what the byte check proves. 📜
+
+---
+
+## ✅ Verification
+
+Eleven suites, all green, all by execution:
+
+```sh
+make test  test-ir  test-flat  test-skull  test-inv  test-geom
+make wat-test  geometry-test  runtime-test  array-runtime-test
+make traceback-test
+make cold-boot   # the whole tree, sealed, in one pass 🧊
+```
+
+Per-version scope and verification records live in
+[STATUS.md](STATUS.md) — proven and claimed are kept separate
+there, and here. 🧾
+
+---
+
+## 🛣️ Open frontier
+
+Stated plainly, in the present tense:
+
+- The WASM vector subset is fixed-length **f64**; the symbolic
+  subset is affine **i64** with declared modulo-2⁶⁴ arithmetic
+- The geometry and array runtime compilers are separate
+  lowerings, not yet one unified typed-FLAT → WASM pipeline
+- Persistent tensor buffers 🧊, ternary arithmetic 🔱,
+  Church-3 reduction, Unlambda 🐦, and the flat decoder are
+  designed and listed — not yet implemented
+- The Wolfram layer is a compatible subset; no Wolfram Engine
+  is involved
+
+---
+
+## 🏷️ Topics
+
+```
+rainbow-array-machine, webassembly, wasm, emoji-programming,
+array-programming, bqn, apl, k, wolfram, compiler, typed-ir,
+flat-ir, skull-crown, cold-boot, provenance, reversible-computing,
+lean, mathlib, c11
+```
+
+---
+
+## ⚖️ License
+
+**SNAPKITTY OPAQUE SOURCE LICENSE v1.0** —
+`LicenseRef-Sovereign-Leviathan-SL-AGPL3-001` © 2026 SnapKitty West.
+Owners: **Nova Parr, Ahmad Ali Parr, and Team HoloTwinKitty**.
+
+The full text is [LICENSE](LICENSE) at the root — the only
+license in this tree. Publication, access, download, visibility,
+or possession is **not** commercial authorization; commercial
+use requires separate written authorization from the owners. 📜

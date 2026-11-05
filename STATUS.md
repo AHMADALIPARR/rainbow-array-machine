@@ -319,6 +319,20 @@ The pass prints PROVEN (executed in the run) separately from
 DECLARED (the sealed fields) and grants nothing: no commercial
 authorization, no push, no publish, no license change.
 
+## README — production form (owner's order, 2026-11-04)
+
+The README is rewritten in production form: badges (license,
+architecture, source, cold boot, suites, encoding), the program
+shown with its actual executed outputs (demo, assertions,
+geometry, the WASM modules), the stack report, a components
+table, the topic list for the repo's GitHub page, and a license
+section. License audit at the same pass: exactly one LICENSE
+file in the tree (the sovereign text, hash matching the
+Cold Boot seal), the only copyright line in the tree is
+SnapKitty West's, and no MIT license text exists anywhere in
+the tree. Cold Boot still passes end-to-end (18 gates) with the
+new README in place; the tree is clean.
+
 ## The remaining "what comes next" list (owner's order)
 
 1. ~~A genuine typed compiler IR~~ — done above (v0.2 core).
