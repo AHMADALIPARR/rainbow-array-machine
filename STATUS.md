@@ -182,6 +182,54 @@ the encoded form) also landed with this milestone: the owner's
 0x65 vector, involution, and NOT semantics cross-checked over
 all byte values.
 
+## v0.5 — as received and checked (owner's zip, 2026-11-04)
+
+Committed verbatim (`771f814`): `src/ram_runtime.py` closes the
+pipeline the owner drew — it hand-assembles a real WebAssembly
+binary (his own ULEB/SLEB/section encoders, no external
+assembler), in which the geometry transforms and the POINT
+assertions execute at runtime inside `run()`; SHAPE assertions
+are compile-time. Emits `.wasm`, a `.wat` listing of the same
+instruction sequence, the `ram-runtime-v1` manifest, and the
+`.skull` encoding of the binary.
+
+Checked by execution here (the owner's request):
+- `make runtime-test` passes: Node instantiates the binary,
+  `run()` applies 9 operations to 4 points, final memory matches
+  the manifest's expected points.
+- Tamper evidence: flipping one initial-point byte in a copy of
+  the binary makes `run()` return −1 (the in-WASM assertion
+  fires) and the harness rejects it — the execution and the
+  assertions are real, not ceremonial.
+- Regeneration of all four artifacts is byte-deterministic.
+- 💀👑 interoperability, both directions: this repo's C decoder
+  (`skull decode`) reproduces the `.wasm` from the owner's
+  `.skull` byte-for-byte, and the owner's Python decoder
+  reproduces the `.wasm` from the C encoder's canonical
+  `.skull`. The two implementations of the alphabet agree; only
+  line wrapping differs, and both decoders ignore whitespace.
+- The `.skull` opens with the WASM magic in skull/crown form,
+  matching the acceptance fixture from the alphabet milestone.
+Scope, as his README states it: one grid, integer coordinates,
+quarter-turn Z rotations, integer translations, point/shape
+assertions; no floating point, no arbitrary geometry, no Wolfram
+Engine integration.
+
+## Architectural identity (owner, 2026-11-04)
+
+Rainbow Array Machine is a **WebAssembly stack**, WASM-first:
+the C11 compiler is a build-time tool and WebAssembly is the
+execution target. BQN/APL/KCL/Wolfram are source semantics; the
+typed FLAT IR carries geometry, tensors, inverses, and
+assertions; skull/crown is a **serialization format** for the
+WASM binary — it is decoded before a standard runtime loads the
+module, and is not itself an execution layer. `make report`
+prints the stack's identity block in the owner's form. One
+distinction he states and this file preserves: the current WASM
+runtime executes the implemented geometry subset, not yet the
+entire array and symbolic instruction set — that lowering is the
+open frontier, and nothing here claims otherwise.
+
 ## The remaining "what comes next" list (owner's order)
 
 1. ~~A genuine typed compiler IR~~ — done above (v0.2 core).
