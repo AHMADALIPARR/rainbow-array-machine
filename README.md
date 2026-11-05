@@ -1,136 +1,163 @@
-# 🌈💀👑 Rainbow Array Machine
+# 🌈💀👑 Rainbow Array Machine — v1
 
 ![License: Sovereign Leviathan](https://img.shields.io/badge/license-Sovereign%20Leviathan-blueviolet)
 ![Architecture: WebAssembly](https://img.shields.io/badge/architecture-WebAssembly-654ff0)
-![Source: UTF-8 Emoji](https://img.shields.io/badge/source-UTF--8%20emoji-orange)
-![Cold Boot: 18 gates PASS](https://img.shields.io/badge/cold%20boot-18%20gates%20PASS-brightgreen)
-![Suites: 11 passing](https://img.shields.io/badge/suites-11%20passing-success)
+![Toolchain: C11 + Clang wasm32](https://img.shields.io/badge/toolchain-C11%20%2B%20Clang%20wasm32-blue)
+![Python: none](https://img.shields.io/badge/python-none-success)
+![Theorems: lake-checked](https://img.shields.io/badge/theorems-lake%20build%20%E2%9C%93-brightgreen)
 ![Encoding: Skull/Crown](https://img.shields.io/badge/encoding-%F0%9F%92%80%F0%9F%91%91%20.skull-black)
 
-An array machine whose source language is UTF-8 emoji, whose
-intermediate representation is typed FLAT, and whose execution
-target is **WebAssembly**. 🌈
+An array machine whose source language is UTF-8 emoji and whose
+execution target is **WebAssembly**. Every program compiles to
+its **own standalone WASM module** — parser, typed FLAT stages,
+and code generator are C11; Clang's wasm32 target produces the
+module; the operations and the assertions execute inside it. 🕸️
 
 🌀 **BQN** · 🔺 **APL** · ⚡ **K** · 🐺 **Wolfram subset** · 📐 **geometry**
-
-The C11 compiler is a build-time tool. WASM is the machine.
+(namespace tags for a bounded, explicitly defined subset — not
+full implementations of those languages)
 
 ---
 
-## 🧊 Cold Boot — start here
+## ▶️ A program, executing
 
-This repository carries a **Cold Boot** front door:
-[COLD-BOOT.md](COLD-BOOT.md) declares the owners, the license,
-the verified baseline commit, the architecture, and the entry
-points, sealed with a SHA-256 over its field block. 🔐
+One program, five instructions — vectors, matmul, geometry, an
+inverse, and the affine — compiled into a single module:
+
+```
+🌀 📏 ➕ 3 1 2 3 4 5 6 >>>>>>>€ 5 7 9
+🌀 🟦 🧲 2 3 2 1 2 3 4 5 6 7 8 9 10 11 12 >>>>>>>€ 58 64 139 154
+🌀 📐 @@ ROTATE_Z 2 1 1 0 0 0 1 0 >>>>>>>€ 0 1 0 -1 0 0
+↶ 🌀 📐 @@ ROTATE_Z 1 1 0 1 0 >>>>>>>€ 1 0 0
+🐺 🔹 📜 2 3 7 4 >>>>>>>€ 27
+```
 
 ```sh
-./cold-boot.sh        # or: make cold-boot
+make -C core modules        # ramc → flat_check → flat_lower
+                            # → ram_codegen → clang wasm32
 ```
 
-The pass re-verifies the tree by execution and fails closed:
-
 ```
-GATE seal: PASS            GATE license_sha: PASS
-GATE license_spdx: PASS    GATE baseline_ancestor: PASS
-GATE identity: PASS        GATE build: PASS
-GATE suite_* (×11): PASS   GATE artifact_traceback: PASS
-GATE artifact_skull: PASS
-COLD BOOT: PASS — every gate above was executed in this run.
+$ run showcase.wasm
+PASS standalone WASM: 17 outputs
+[5,7,9, 58,64,139,154, 0,1,0,-1,0,0, 1,0,0, 27]
 ```
 
-An arriving agent reads the front door, runs one command, and
-works only with what the pass proves. ✅
+`run()` returns 0 only when every operation **and every
+assertion inside the module** passes. A false assertion returns
+a nonzero code from the WASM itself — the host computes nothing. 🛡️
 
 ---
 
-## 👀 The program
-
-Emoji source in, typed results out:
+## 🏗️ Pipeline
 
 ```
-# examples/demo.ram
-🌀 📏 ➕ 3 1 2 3 4 5 6
-🔺 🟦 🔄 2 3 1 2 3 4 5 6
-⚡ 📏 🧮 4 1 2 3 4
-🌀 🟦 🧲 2 3 2 1 2 3 4 5 6 7 8 9 10 11 12
-```
-
-```
-BQN vector add       => rank=1 shape=[3]   values=[5,7,9]
-APL matrix transpose => rank=2 shape=[3,2] values=[1,4,2,5,3,6]
-K vector sum         => rank=0 shape=[]    values=[10]
-BQN matrix matmul    => rank=2 shape=[2,2] values=[58,64,139,154]
-```
-
-### >>>>>>>€ — assertions in the source 🔍
-
-```
-🔺 📏 ➕ [1 2 3] [4 5 6]
->>>>>>>€ [5 7 9]
-🔺 🔹 ⚖️ 3 3
->>>>>>>€ 👑
-```
-
-```
-APL vector add     => values=[5,7,9]   assertion ok
-APL scalar compare => values=[👑]      assertion ok
-```
-
-### 📐 Geometry is a first-class type
-
-```
-🌀 📐 GRID lattice 2 2 1 1
->>>>>>>€ SHAPE 2 2 1
-⚡ @@ lattice ROTATE_Z 90
->>>>>>>€ POINT 1 0 1 0
-↶ ⚡ @@ lattice ROTATE_Z 90
->>>>>>>€ POINT 1 1 0 0
-```
-
-The grid executes inside a WASM binary: transforms and POINT
-assertions run in `run()` at runtime, and a tampered point makes
-the module return −1. 🛡️
-
-### 🕸️ The same source, executing in WebAssembly
-
-```
-🌀 📏 ➕ 3 1 2 3 4 5 6     →  .wasm loop over linear memory  →  [5, 7, 9]
-🐺 🔹 📜 2 3 7             →  exported run(x:i64)->i64      →  5x + 7
+🌈 emoji source (.ram)
+  → ramc        C11 strict parser            → RAMIR1
+  → flat_check  C11 shape/op validation      → FLAT1 metadata
+  → flat_lower  C11 metadata + payload       → FLAT2
+  → ram_codegen C11 standalone lowering      → C source
+  → clang       wasm32                       → 📦 program.wasm
+  → run()       operations + assertions execute in-module
+💀👑 .skull      reversible serialization of the .wasm bytes
 ```
 
 ---
 
-## 🏗️ Architecture
+## 📊 Benchmarks
 
-```
-🌈 Unicode Emoji Source
-   BQN · APL · KCL · Wolfram · Array primitives
-📐 Typed FLAT IR
-   Geometry · Tensors · Inverses · Assertions
-⚙️ Compiler / Lowering
-   C11 frontend · WAT code generation · hand-assembled modules
-🕸️ WebAssembly Stack Machine
-   i32 · i64 · f32 · f64 · Linear memory
-📦 WASM Binary (.wasm)
-💀👑 Skull/Crown Encoding (.skull) — serialization, decoded before load
-🚀 WASM Runtime — Node.js · Wasmtime-compatible targets
+Measured by execution (2026-11-05, AMD EPYC 9D25 VM, Clang 23,
+Node 24; medians of 5 runs). Reproduce with `make test` and the
+timing method in STATUS.
+
+**Compile pipeline — the showcase program, source → module:**
+
+| Stage | Median |
+|---|---|
+| ramc (parse → RAMIR1) | 1.08 ms |
+| flat_check (→ FLAT1) | 1.43 ms |
+| flat_lower (→ FLAT2) | 1.43 ms |
+| ram_codegen (FLAT2 → C) | 2.87 ms |
+| clang (C → wasm32) | 234.26 ms |
+| **Total** | **≈ 241 ms** |
+
+**Modules and execution:**
+
+| Module | Size | Instantiate | `run()` median | Throughput |
+|---|---|---|---|---|
+| array.wasm (5 instr) | 3,093 B | 0.94 ms | 0.094 µs | ≈ 10.6 M runs/s |
+| geometry.wasm (5 instr) | 2,984 B | — | — | — |
+| symbolic.wasm (1 instr) | 2,298 B | 0.38 ms | 0.027 µs | ≈ 37.0 M runs/s |
+| showcase.wasm (5 instr) | 2,975 B | 2.29 ms | 0.170 µs | ≈ 5.9 M runs/s |
+
+**Serialization:** a 3,093-byte module encodes to a 98,976-byte
+`.skull` — exactly 32× (8 symbols per byte × 4 UTF-8 bytes per
+symbol), byte-for-byte reversible. 💀👑
+
+---
+
+## 🔒 Invariants
+
+These hold by construction and are exercised by the test suites:
+
+1. **Per-program modules.** Each program compiles to its own
+   standalone `.wasm`. There is no instruction interpreter and
+   no shared dispatcher in the execution path.
+2. **Assertions execute in WASM.** `>>>>>>>€` expectations are
+   compiled into the module and checked by the kernel's
+   `assert_equal` (tolerance 1e-10) inside `run()`; failure
+   returns a nonzero code identifying the instruction.
+3. **The host computes nothing.** A harness instantiates the
+   module, calls `run()`, and reads exported linear memory.
+4. **Division by zero is refused** — the elementwise kernel
+   returns an error code, never an infinity.
+5. **Kernel bounds are enforced in-module:** elementwise
+   n ≤ 4096, matmul dimensions ≤ 64, geometry points ≤ 1024.
+   Violations return an error code; nothing is clamped silently.
+6. **FLAT2 integrity.** Every executable payload line travels
+   paired with its validated FLAT1 metadata line. A missing
+   payload or a count mismatch is refused before code generation.
+7. **The frontend fails closed.** Unknown namespaces or
+   opcodes, missing operands, non-finite numbers, and trailing
+   input are rejected with a nonzero exit — no partial program
+   is ever lowered.
+8. **↶ is exact for geometry.** Inverses are the parse-time
+   negation of quarter turns and translation deltas; a transform
+   followed by its inverse returns the declared points exactly.
+9. **💀👑 is serialization, never execution.** A `.skull` is
+   decoded to bytes before any runtime loads the module.
+10. **No scripting languages in the build path.** Parser, FLAT
+    stages, and code generator are C11; the compiler target is
+    Clang wasm32.
+
+---
+
+## 📜 Theorems
+
+`proofs/Arithmetic.lean` — mathematical specifications of the
+kernels, **kernel-checked with `lake build`** (Lean v4.9.0,
+Mathlib v4.9.0; build exit 0, no `sorry`):
+
+```lean
+def affineSpec (a b c x : ℤ) : ℤ := (a + b) * x + c
+
+theorem affine_expand (a b c x : ℤ) :
+    affineSpec a b c x = a * x + b * x + c
+
+theorem inverse_translation (x delta : ℤ) :
+    (x + delta) - delta = x
+
+theorem transpose_index_roundtrip (m n i j : ℕ)
+    (hi : i < m) (hj : j < n) :
+    (j * m + i) / m = j ∧ (j * m + i) % m = i
 ```
 
-```
-RAINBOW ARRAY MACHINE        (make report)
-Architecture: WebAssembly Stack Machine
-Source:       UTF-8 Unicode Emoji
-Frontend:     BQN / APL / KCL / Wolfram subsets
-IR:           Typed FLAT
-Compiler:     C11 → WAT → WASM
-Execution:    WASM Runtime
-Memory:       WebAssembly Linear Memory
-Binary:       .wasm
-Encoding:     💀👑 .skull
-Assertions:   >>>>>>>€
-Inverse:      ↶
-```
+Scope, stated plainly: these theorems specify the **mathematics**
+the kernels implement — the affine law, translation inversion,
+and the row-major transpose index decode (both axes recovered).
+They do not claim instruction-level equivalence between the
+specification and the emitted WASM; that requires a formal WASM
+semantics and a simulation proof, and it is not claimed here. 🧾
 
 ---
 
@@ -138,89 +165,25 @@ Inverse:      ↶
 
 | Piece | Role |
 |---|---|
-| `src/ram.c` | 🌐 The emoji interpreter — BQN/APL/K namespaces, the 🐺 Wolfram subset (✨ simplify · 📜 FLAT lowering · 🛡️ certificate) |
-| `src/ramc.c` | 🏷️ Typed compiler IR — canonical SSA, bindings, shape/kind checks, assertions, inverses, geometry |
-| `src/flat.c` | ▶️ FLAT v1 virtual machine — scalar + elementwise tensor execution, checked i64 (overflow refused) |
-| `src/ram_wat.py` | 📝 WAT backend — vector ops and the affine function as exported modules |
-| `src/ram_geometry.py` | 📐 Geometry compiler — GRID, the @@ bridge, Geometric FLAT |
-| `src/ram_runtime.py` | 🕸️ Hand-assembled WASM — geometry transforms + assertions execute in `run()` |
-| `src/ram_array_runtime.py` | 🕸️ Hand-assembled WASM — vector ops loop in-module; affine `run(x)` exported |
-| `src/ram_array_runtime.c` | 🛠️ The C11 twin of the array runtime — byte-identical artifacts, no Python (`make test-array-c`) |
-| `src/ram_traceback.py` | 🔄 Generative traceback — artifact/source byte equality + generated Lean proof obligations |
-| `src/skull.c` | 💀👑 Skull & Crown — `encode` · `decode` · `invert` |
-| `proofs/` | 📜 Generated Lean obligations + hash evidence records |
-| `cold-boot.sh` | 🧊 The Cold Boot scoping pass |
-
----
-
-## 💀👑 Skull & Crown
-
-A lossless Unicode encoding of binary data — the machine's
-canonical alphabet for binaries, weights, and fixtures:
-
-- 💀 = bit `0` · 👑 = bit `1` · MSB first · byte-aligned
-- The WASM magic `00 61 73 6D` encodes as four 8-symbol lines
-- Two independent implementations (C and Python) decode each
-  other's output byte-for-byte 🔁
-- `.skull` is **serialization**: it is decoded before a standard
-  runtime loads the module — never an execution layer
-
----
-
-## 🔁 Reversible algebra
-
-- **↶** registered inverses — add, multiply, transpose, reverse
-  are exact; flatten/reshape inverses require saved shape
-  metadata and compilation fails without it
-- **⟲** one-line round trips, verified in place
-- **🛡️ ROUNDTRIP** certificates —
-  `status=VERIFIED_ON_TESTED_INPUTS`, scoped to the tested inputs
-- **⚖️** compare yields a verdict: 👑 or 💀
-
----
-
-## 🔄 Traceback — metaprogramming inversion
-
-Given a source and a `.wasm`, the traceback recompiles the
-source deterministically and demands **byte equality** with the
-artifact — altered binaries and wrong sources are rejected.
-It then *generates* a Lean proof obligation for the pair (the
-affine identity over ℤ; the pointwise array map over ℤ) with a
-SHA-256 evidence record. The obligations state the algebra;
-artifact consistency is what the byte check proves. 📜
-
----
-
-## ✅ Verification
-
-Eleven suites, all green, all by execution:
-
-```sh
-make test  test-ir  test-flat  test-skull  test-inv  test-geom
-make wat-test  geometry-test  runtime-test  array-runtime-test
-make traceback-test
-make cold-boot   # the whole tree, sealed, in one pass 🧊
-```
-
-Per-version scope and verification records live in
-[STATUS.md](STATUS.md) — proven and claimed are kept separate
-there, and here. 🧾
+| `core/src/ramc.c` | 🌐 Strict UTF-8 emoji parser → RAMIR1 (↶ geometry inverses at parse) |
+| `core/src/flat_check.c` | 🏷️ RAMIR1 validation → FLAT1 typed metadata (rank, shape, elements, assert flag) |
+| `core/src/flat_lower.c` | 📐 FLAT1 + payload → FLAT2, count-checked pairing |
+| `core/src/ram_codegen.c` | ⚙️ FLAT2 → standalone C module source |
+| `core/src/kernel.c` | 🕸️ The WASM kernel — elementwise (➕➖✖️➗), matmul, transpose, reduce_sum, affine, rotate, translate, assert_equal — compiled by Clang to wasm32 |
+| `src/skull.c` | 💀👑 Skull/Crown encode/decode/invert — the repo codec; it frames the same MSB-first symbol stream with a newline per byte |
+| `core/proofs/Arithmetic.lean` | 📜 The theorems above |
 
 ---
 
 ## 🛣️ Open frontier
 
-Stated plainly, in the present tense:
-
-- The WASM vector subset is fixed-length **f64**; the symbolic
-  subset is affine **i64** with declared modulo-2⁶⁴ arithmetic
-- The geometry and array runtime compilers are separate
-  lowerings, not yet one unified typed-FLAT → WASM pipeline
-- Persistent tensor buffers 🧊, ternary arithmetic 🔱,
-  Church-3 reduction, Unlambda 🐦, and the flat decoder are
-  designed and listed — not yet implemented
-- The Wolfram layer is a compatible subset; no Wolfram Engine
-  is involved
+- FLAT2 carries validated metadata with the payload; it is not
+  yet an SSA IR with buffer allocation or a type-soundness proof
+- Full BQN/APL/KCL/Wolfram semantics are not implemented; the
+  namespaces tag a bounded subset
+- Runtime-input ABI (programs that take external data at run
+  time) is future work; v1 programs carry their constants
+- WASM↔specification equivalence proofs are not claimed
 
 ---
 
@@ -230,7 +193,7 @@ Stated plainly, in the present tense:
 rainbow-array-machine, webassembly, wasm, emoji-programming,
 array-programming, bqn, apl, k, wolfram, compiler, typed-ir,
 flat-ir, skull-crown, cold-boot, provenance, reversible-computing,
-lean, mathlib, c11
+lean, mathlib, c11, clang
 ```
 
 ---
@@ -240,8 +203,5 @@ lean, mathlib, c11
 **SNAPKITTY OPAQUE SOURCE LICENSE v1.0** —
 `LicenseRef-Sovereign-Leviathan-SL-AGPL3-001` © 2026 SnapKitty West.
 Owners: **Nova Parr, Ahmad Ali Parr, and Team HoloTwinKitty**.
-
-The full text is [LICENSE](LICENSE) at the root — the only
-license in this tree. Publication, access, download, visibility,
-or possession is **not** commercial authorization; commercial
-use requires separate written authorization from the owners. 📜
+Publication is not commercial authorization; commercial use
+requires separate written authorization from the owners. 📜

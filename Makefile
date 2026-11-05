@@ -1,6 +1,6 @@
 CC ?= cc
 CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Werror -pedantic
-.PHONY: all test test-ir test-flat test-skull test-inv test-geom clean
+.PHONY: all test test-ir test-flat test-skull test-inv test-geom test-array-c core-test clean
 all: ram ramc flat skull ram-array-runtime
 ram: src/ram.c
 	$(CC) $(CFLAGS) -o $@ $< -lm
@@ -29,60 +29,25 @@ test-array-c: ram-array-runtime
 	./ram-array-runtime examples/runtime-array/apl.ram -o examples/runtime-array/apl.wasm
 	./ram-array-runtime examples/runtime-array/k.ram -o examples/runtime-array/k.wasm
 	./ram-array-runtime examples/runtime-array/symbolic.ram -o examples/runtime-array/symbolic.wasm
-	node tests/array_runtime.js
+core-test:
+	$(MAKE) -C core test
 clean:
 	rm -f ram ramc flat skull ram-array-runtime
 
 .PHONY: report
 report:
 	@echo "RAINBOW ARRAY MACHINE"
-	@echo "Architecture: WebAssembly Stack Machine"
+	@echo "Architecture: WebAssembly (standalone per-program modules)"
 	@echo "Source:       UTF-8 Unicode Emoji"
-	@echo "Frontend:     BQN / APL / KCL / Wolfram subsets"
-	@echo "IR:           Typed FLAT"
-	@echo "Compiler:     C11 → WAT → WASM"
-	@echo "Execution:    WASM Runtime"
+	@echo "Frontend:     BQN / APL / K / Wolfram subsets (bounded)"
+	@echo "Pipeline:     C11 -> RAMIR1 -> FLAT1 -> FLAT2 -> C -> clang wasm32"
+	@echo "Core:         core/ (parser, FLAT stages, codegen, kernel)"
+	@echo "Execution:    WebAssembly Runtime (assertions execute in-module)"
 	@echo "Memory:       WebAssembly Linear Memory"
 	@echo "Binary:       .wasm"
-	@echo "Encoding:     💀👑 .skull"
+	@echo "Encoding:     💀👑 .skull (serialization only)"
 	@echo "Assertions:   >>>>>>>€"
 	@echo "Inverse:      ↶"
-
-.PHONY: wat-test
-wat-test:
-	python3 src/ram_wat.py examples/wat/vector.ram -o examples/wat/vector.wat
-	python3 src/ram_wat.py examples/wat/symbolic.ram -o examples/wat/symbolic.wat
-	python3 tests/test_wat.py
-
-.PHONY: geometry-test
-geometry-test:
-	python3 -m unittest discover -s tests -p 'test_geometry.py' -v
-	python3 src/ram_geometry.py examples/geometry/grid.ram -o examples/geometry/grid.wat
-
-.PHONY: runtime-test
-runtime-test:
-	python3 src/ram_runtime.py examples/geometry/grid.ram -o examples/geometry/grid-runtime.wasm
-	node tests/runtime.js examples/geometry/grid-runtime.wasm
-	python3 src/ram_runtime.py --decode examples/geometry/grid-runtime.skull -o examples/geometry/grid-roundtrip.wasm
-	cmp examples/geometry/grid-runtime.wasm examples/geometry/grid-roundtrip.wasm
-
-.PHONY: array-runtime-test
-array-runtime-test:
-	python3 src/ram_array_runtime.py examples/runtime-array/vector.ram -o examples/runtime-array/vector.wasm
-	python3 src/ram_array_runtime.py examples/runtime-array/apl.ram -o examples/runtime-array/apl.wasm
-	python3 src/ram_array_runtime.py examples/runtime-array/k.ram -o examples/runtime-array/k.wasm
-	python3 src/ram_array_runtime.py examples/runtime-array/symbolic.ram -o examples/runtime-array/symbolic.wasm
-	node tests/array_runtime.js
-
-.PHONY: traceback-test traceback-proof
-traceback-test:
-	python3 -m unittest discover -s tests -p 'test_traceback.py' -v
-	python3 src/ram_traceback.py examples/runtime-array/symbolic.ram examples/runtime-array/symbolic.wasm -o proofs/Symbolic.lean
-
-# Requires an installed Lean/mathlib project; never report success without checking.
-traceback-proof: traceback-test
-	@command -v lake >/dev/null || { echo 'FAIL: lake/mathlib unavailable'; exit 1; }
-	lake env lean proofs/Symbolic.lean
 
 .PHONY: cold-boot
 cold-boot:

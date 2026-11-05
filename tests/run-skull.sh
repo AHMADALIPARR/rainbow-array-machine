@@ -30,11 +30,11 @@ assert open(T + '.all2', 'rb').read() == data, 'C decoder disagrees with referen
 print('reference cross-check: all 256 byte values, both directions, agree')
 EOF
 
-./skull encode examples/wat/symbolic.wat $T.wat.skull
+./skull encode examples/runtime-array/symbolic.wasm $T.wat.skull
 ./skull decode $T.wat.skull $T.wat2
-cmp examples/wat/symbolic.wat $T.wat2 || { echo 'FAIL: real-file round trip'; exit 1; }
+cmp examples/runtime-array/symbolic.wasm $T.wat2 || { echo 'FAIL: real-file round trip'; exit 1; }
 python3 -c "
-import sys; n = len(open('$T.wat.skull','rb').read()); src = len(open('examples/wat/symbolic.wat','rb').read())
+import sys; n = len(open('$T.wat.skull','rb').read()); src = len(open('examples/runtime-array/symbolic.wasm','rb').read())
 assert n == src*33, (n, src)  # 8 symbols x 4 bytes + 1 newline per source byte
 print(f'size law: {src} bytes -> {n} bytes (33x in canonical line form, 32x symbols alone)')"
 

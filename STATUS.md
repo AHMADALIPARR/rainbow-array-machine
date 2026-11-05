@@ -367,3 +367,47 @@ unchanged this stage.
 5. Unlambda execution — the 🐦 namespace executes, through the IR.
 6. The flat decoder — the v0.6 reference: the array machine runs
    the decoder workload end to end.
+
+## v1 production launch (owner's order, 2026-11-05)
+
+- The execution core is the owner's rebuild line, integrated at
+  core/ exactly as shipped (rainbow-wasm flat2 tree): ramc
+  (RAMIR1), flat_check (FLAT1), flat_lower (FLAT2), ram_codegen,
+  kernel.c, the three examples, his README and IMPLEMENTATION_STATUS
+  carried verbatim. Two disclosed integration deltas:
+  (1) ram_codegen.c carries a one-line fix — the FLAT2 header
+  re-read now checks fgets' return value; the shipped line fails
+  -Werror=unused-result under GCC 13 with glibc fortify;
+  (2) proofs/Arithmetic.lean is the owner's transpose-proof patch
+  (strengthened conjunction), lake-verified in the Mathlib v4.9.0
+  environment: lake build exit 0, all three theorems kernel-check.
+- examples/showcase.ram (assistant-composed from the shipped
+  operators) is the README program: one module, five instructions,
+  17 outputs [5,7,9,58,64,139,154,0,1,0,-1,0,0,1,0,0,27], executed
+  by core's suite in this launch verification.
+- Python and JavaScript strip-out: all 8 .py and 2 .js files are
+  removed from the tree, with the generated artifacts of the
+  retired Python backends (examples/wat/*.wat, the v0.4/v0.5
+  geometry runtime outputs). The v0.1–v0.7 .ram sources and the
+  C line (interpreter, typed IR, FLAT, skull, C array-runtime
+  port) stand. proofs/Symbolic.lean and its trace remain as
+  standing artifacts; their generator is retired. One disclosed
+  residue: tests/run-skull.sh (assistant test tooling) still uses
+  an embedded Python reference encoder as a cross-check oracle —
+  test tooling only, no Python ships in the stack; a C port of
+  the oracle is open work.
+- Skull formats: the core's shipped JS serializer and the repo C
+  codec are the same MSB-first encoding; the C codec frames it
+  with a newline per byte (33x) where the JS wrote the unbroken
+  stream (32x). The repo codec is canonical in-tree; the formats
+  are not silently unified.
+- Makefile: Python targets (wat-test, geometry-test, runtime-test,
+  array-runtime-test, traceback-test, traceback-proof) removed;
+  test-array-c regenerates the C port's artifacts (byte-identical,
+  verified by a clean tree after regeneration); core-test runs the
+  core suite. README is the v1 production README (executing
+  program, measured benchmarks, invariants, theorems).
+- Benchmark method (README figures): pipeline stages timed with
+  Python's perf_counter around subprocess runs (median of 5);
+  execution timed in Node over 20,000–50,000 run() calls per round
+  (median of 5 rounds), AMD EPYC 9D25 VM, Clang 23, Node 24.
