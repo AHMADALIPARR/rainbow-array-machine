@@ -1,0 +1,10 @@
+{
+  "kind": "vector-f64",
+  "language": "K",
+  "operation": "f64.sub",
+  "length": 3,
+  "input_a_offset": 0,
+  "input_b_offset": 24,
+  "output_offset": 48,
+  "result_bytes": 24
+}

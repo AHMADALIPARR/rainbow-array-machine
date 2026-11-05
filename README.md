@@ -151,3 +151,9 @@ cmp examples/geometry/grid-runtime.wasm /tmp/roundtrip.wasm
 ```
 
 `💀` means bit 0, `👑` means bit 1, most-significant bit first. Whitespace is ignored on decoding; every eight emojis represent one byte. This is lossless encoding, not compression or encryption. The `.wat` is a textual rendering of the generated instruction sequence, not an independently assembled build input. `@@` is RAM-specific syntax inspired by KCL, not a claim of native KCL support. Current limitations: one grid, integer coordinates, exact quarter-turn Z rotations, integer translation, point/shape assertions; no arbitrary geometry, floating point, or Wolfram engine integration.
+
+## v0.6: Executable array and affine WASM subsets
+
+`make array-runtime-test` compiles BQN/APL/K-qualified f64 vector add/subtract/multiply and the standalone Wolfram-compatible affine i64 subset into **real WebAssembly binaries**. Node.js instantiates the modules and verifies runtime outputs. The vector compiler places input operands in linear memory and performs arithmetic inside a runtime WASM loop. It also writes matching WAT, a FLAT-layout JSON manifest, and a reversible 💀👑 `.skull` serialization.
+
+This is **not** a complete lowering of all array, geometry, or Wolfram operations: supported vector operations are fixed-length f64, the symbolic subset is affine i64 with wraparound arithmetic, and the two runtime compilers are not yet unified into a general typed FLAT lowering pipeline. No licensed Wolfram Engine is invoked. Unsupported operations are rejected.

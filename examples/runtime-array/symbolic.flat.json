@@ -1,0 +1,9 @@
+{
+  "kind": "affine-i64",
+  "language": "Wolfram-compatible subset",
+  "coefficients": [
+    5,
+    7
+  ],
+  "arithmetic": "modulo 2^64"
+}
