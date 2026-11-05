@@ -492,3 +492,8 @@ unchanged this stage.
   Proven-at-baseline now also records the CompCert lowering
   (10 programs, byte-exact differentials). Full pass at reseal:
   16/16 gates.
+
+## README full upgrade (2026-11-05, owner-ordered)
+- README.md rewritten out to a full user guide (not a summary): prerequisites, build/test, first-program walkthrough (verified end-to-end exactly as documented — rc 0 on [5,7,9], rc 200 on a false expectation), complete operator reference table, serialization + CompCert how-tos, failure-modes table.
+- Programs explained in full: each core tool (inputs, outputs, refusal behavior), the kernel op inventory, the v0.1 line (ram.c, ramc.c typed, flat.c, ram_array_runtime.c, skull.c), and every example.
+- New sections: Gallery (three images rendered from real program data — seal grid from the seal's own 208-row output, geometry transforms from geometry.ram's declared values, a Piet/Genmoji painting in the 18 Piet colors), Semantics layer (BQN/KCL/Wolfram/Piet in full), CompCert results table, Polynomial.lean theorems; benchmarks refreshed (module sizes + run medians re-measured, CompCert assembly table, skull framing stated exactly: 32x stream, 33x file).
