@@ -72,6 +72,30 @@ for the array core and FLAT v1 for the symbolic subset — and they
 are tied numerically by the cross-check above, not yet unified.
 Unifying them is a future decision for the owner.
 
+## v0.3 — as received (owner's zip, 2026-11-04)
+
+Committed verbatim (`2590d94`): a WAT backend, `src/ram_wat.py`,
+lowering exactly one statement per module — BQN/APL/K vector
+add/subtract/multiply with f64 constants embedded, results stored
+to exported linear memory; and the 🐺 📜 symbolic affine as an
+exported `run(x:i64)->i64`. `examples/wat/` holds both source/.wat
+pairs; `make wat-test` regenerates and tests them.
+
+Verified scope, stated as the owner stated it: **the compiler
+emits WAT; the resulting .wasm has not been assembled or executed
+in this drop. The Wolfram layer is the standalone compatible
+subset, not an integration with Wolfram Engine.** Additionally
+verified here: the generation and rejection tests pass, and
+regeneration is byte-deterministic (md5-identical .wat outputs).
+
+Two facts for the follow-on step: Node is present on this VM and
+can execute .wasm; `wat2wasm` (WABT) is absent — assembling is the
+single missing piece. Auditor note, no action taken: the WAT
+symbolic function uses wrapping i64 WebAssembly arithmetic (so
+stated in the owner's README), while `flat.c` refuses overflow —
+two backends currently carry two overflow semantics; whether they
+should agree is the owner's call.
+
 ## The remaining "what comes next" list (owner's order)
 
 1. ~~A genuine typed compiler IR~~ — done above (v0.2 core).
