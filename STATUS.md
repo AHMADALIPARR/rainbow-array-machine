@@ -32,6 +32,46 @@ The first of the owner's "what comes next" list, built as new code
   [19,43,22,50]); 6 negative cases refused. `make test` (the v0.1
   suite) still passes unchanged.
 
+## v0.2 — as received (owner's zip, 2026-11-04)
+
+Committed verbatim (`6d441b1`): the 🐺 Wolfram namespace joins
+`src/ram.c` — a restricted, independently implemented symbolic
+polynomial subset (a·x + b·x + c, coefficients bounded to ±10⁶)
+with ✨ simplify (collect like terms), 📜 FLAT v1 lowering (typed
+SSA-like textual IR), and 🛡️ an algebraic certificate whose scope
+is stated exactly (the coefficient identity over mathematical
+integers; not an overflow proof). Suite as shipped: 9 positive,
+4 negative — passes.
+
+## Milestone — FLAT is executable; symbolic layer meets tensors
+
+The owner's named milestone, built on the v0.2 arrival: `src/flat.c`
+is a FLAT v1 virtual machine. It parses exactly the grammar 📜
+emits (single-assignment i64 chains over one input; mul_i64 /
+add_i64) and executes it in two modes:
+
+- **Scalar** — `flat prog.flat <integer>` prints f(x).
+- **Tensor** — `flat prog.flat <tensor-file>` applies f elementwise
+  to a scalar/vector/matrix and prints in ram's array format: the
+  symbolic expression layer now drives actual tensor operations.
+
+FLAT discipline: redefinition of a temp, an undefined reference, an
+unknown instruction, or a version other than v1 are refused, and
+i64 overflow is checked at every step and refused — never wrapped
+(the 🛡️ certificate does not cover overflow; the executor does).
+
+Verified (`make test-flat`): the 📜 emission round-trips — five
+scalar cases agree with independent shell arithmetic; tensor mode
+maps [1,2,3,4] to [12,17,22,27], agreeing element-for-element with
+ramc computing the same affine map by array operations; five
+negative cases refused, including LLONG_MIN × −1. All three suites
+green: `make test` (9+4), `make test-ir`, `make test-flat`.
+
+Standing seam, stated plainly: two IRs now exist — ramc's typed IR
+for the array core and FLAT v1 for the symbolic subset — and they
+are tied numerically by the cross-check above, not yet unified.
+Unifying them is a future decision for the owner.
+
 ## The remaining "what comes next" list (owner's order)
 
 1. ~~A genuine typed compiler IR~~ — done above (v0.2 core).
