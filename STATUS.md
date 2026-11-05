@@ -96,6 +96,37 @@ stated in the owner's README), while `flat.c` refuses overflow —
 two backends currently carry two overflow semantics; whether they
 should agree is the owner's call.
 
+## Skull & Crown binary alphabet — built to the owner's spec (2026-11-04)
+
+`src/skull.c`: the owner's binary representation system — 💀
+(U+1F480) is 0, 👑 (U+1F451) is 1, MSB first, byte-aligned,
+exact symbol matching. `skull encode` / `skull decode` convert
+between raw bytes and `.skull` text losslessly; canonical form is
+one byte per line, the layout of the owner's worked example. The
+decoder skips ASCII whitespace only and refuses any other
+codepoint and any symbol count not divisible by eight.
+
+This is the same alphabet the owner used for machine-bit
+inspection on the Jetson (Bonsai work); per his direction it is
+now the machine's canonical binary alphabet for binaries, tensor
+weights, instruction streams, and verification fixtures — the
+first fixture is in the tree: `tests/fixtures/wasm-magic.skull`.
+
+Verified (`make test-skull`): the WASM magic bytes 00 61 73 6D
+encode to exactly the owner's four lines and decode back; an
+independent reference encoder agrees with the C implementation
+on all 256 byte values in both directions; a real artifact
+(symbolic.wat) round-trips byte-identically; the size law checks
+arithmetically (221 bytes → 7,293: 32x of symbols plus one
+newline per byte in canonical form); misalignment, a foreign
+emoji, and an ASCII digit are refused.
+
+Pipeline state, honestly: source → typed IR → WAT all exist and
+execute; the .wasm stage is still unassembled (see v0.3 note),
+so `.skull` has been exercised on every other artifact class and
+takes a `.wasm` unchanged the day the assembler lands — the
+encoder neither knows nor cares which bytes it is given.
+
 ## The remaining "what comes next" list (owner's order)
 
 1. ~~A genuine typed compiler IR~~ — done above (v0.2 core).
