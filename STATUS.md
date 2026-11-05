@@ -476,3 +476,10 @@ unchanged this stage.
 - 🛡️ certificate: ramc writes <program>.ir.cert when ✨ is present (CERT v1 lines: rules fired, original terms, canonical form); build/polynomial.ir.cert content is asserted by the flat-test target.
 - Proofs: core/proofs/Polynomial.lean — collect_like_terms, drop_zero_term, horner_step over ℤ, lake build exit 0 (Mathlib v4.9.0 project, temporary lean_lib reverted).
 - semantics/: wolfram.md (the symbolic core layer) and piet.md (Piet layer: 18-color transition semantics; each painting block a Genmoji — glyph is surface, color geometry is code; executor future work in the canvas layer).
+
+## V3 CompCert lowering — COMPLETE (2026-11-05)
+- ccomp 3.12 built and installed (~/workspace/.tools/compcert-3.12-install) on the coq812-env toolchain (Coq 8.12.2 / OCaml 4.14.4, menhir 20230608 built from source — the conda pin fight ended by building the one missing piece from source).
+- ALL 10 host C programs lowered to assembly in compcert/asm/: seal_recursion, core ramc/flat_check/flat_lower/ram_codegen, v0.1 ram/ramc-typed/flat/skull/ram_array_runtime. Sources unmodified. Two build accommodations, both tooling-side: compcert/include/math.h shim (system math.h declares long double, which CompCert rejects; the stack uses only isfinite/round/exp) and -fstruct-passing for src/ramc.c (one struct-returning function).
+- Differentials, all byte-exact: CompCert-built seal output == gcc-built seal output (221 lines, sha256 3b2ae65bdc2d636d...); CompCert-built core tools produce byte-identical IR, FLAT2 and generated C to the gcc-built tools on polynomial + showcase. lower.sh now encodes the full verified procedure (shim, flag, byte diffs).
+- A CompCert 3.14 fallback at ~/workspace/tools-build also lowered the seal byte-identically (independent early confirmation); production chain is 3.12.
+- Scope reminder: CompCert proves C->assembly preservation for these programs; C correctness evidence remains the suites + Lean theorems; WASM modules stay clang-built.
