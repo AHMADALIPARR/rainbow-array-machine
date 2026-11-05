@@ -5,3 +5,4 @@ skull
 ram-array-runtime
 __pycache__/
 core/build/
+compcert/build/
