@@ -230,6 +230,38 @@ runtime executes the implemented geometry subset, not yet the
 entire array and symbolic instruction set — that lowering is the
 open frontier, and nothing here claims otherwise.
 
+## v0.6 — as received and checked (owner's zip, 2026-11-04)
+
+Committed verbatim (`0ea3217`): `src/ram_array_runtime.py`
+lowers the registered array and symbolic subsets to runtime
+WASM, closing the gap named at v0.5 for those subsets. Vector
+add/subtract/multiply (BQN/APL/K, fixed-length f64) execute in a
+runtime loop over linear memory — operands at fixed offsets,
+result computed by the module, nothing precomputed. The Wolfram
+affine subset becomes `run(x:i64)->i64` in the module, with
+modulo-2^64 arithmetic declared in its manifest. Each module
+ships with WAT, a FLAT-layout manifest, and its `.skull`.
+
+Checked by execution here:
+- His Node harness passes all four modules (vector [5,7,9],
+  APL multiply [4,10,18], K subtract [−3,−3,−3], affine
+  run(x) = 5x+7 on the tested points) plus per-module skull
+  round trips.
+- All 16 artifacts regenerate byte-deterministically.
+- This repo's C skull decoder reproduces all four `.wasm`
+  binaries from his `.skull` files byte-for-byte.
+- The declared wrapping model verified at the boundary:
+  run(2⁶²) equals the modulo-2⁶⁴ value exactly.
+- Tamper evidence: editing operand B in a copy of the vector
+  module's memory image changes the runtime output to the
+  correctly recomputed [5,7,10] — the loop computes.
+Scope, as his README states it: this is not yet a complete
+lowering of all array, geometry, or Wolfram operations — the
+vector subset is fixed-length f64, the symbolic subset is affine
+i64, and the two runtime compilers are not yet unified into a
+general typed-FLAT lowering pipeline. Unsupported operations
+are rejected. All ten test targets pass.
+
 ## The remaining "what comes next" list (owner's order)
 
 1. ~~A genuine typed compiler IR~~ — done above (v0.2 core).
